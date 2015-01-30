@@ -8,7 +8,7 @@ namespace Ped{
   class Model
   {
   public:
-    void setup(std::vector<Tagent*> agentsInScenario, IMPLEMENTATION choice);
+    void setup(std::vector<Tagent*> agentsInScenario, IMPLEMENTATION choice, int numThreads);
     void tick();
     const std::vector<Tagent*> getAgents() const;
     static void* threaded_tick(void* data);
@@ -16,6 +16,7 @@ namespace Ped{
     
     IMPLEMENTATION implementation;
     std::vector<Tagent*> agents;
+    int number_of_threads;
     
   };
 }

@@ -16,6 +16,7 @@
 #include <chrono>
 #include <ctime>
 #include <cstring>
+
 #define SIMULATION_STEPS 1000000
 
 
@@ -26,40 +27,34 @@ int main(int argc, char*argv[]) {
   int i = 1;
   QString scenefile = "scenario.xml";
   Ped::IMPLEMENTATION choice = Ped::SEQ;
+  int number_of_threads = std::thread::hardware_concurrency(); // TODO: danger?
   // Argument handling
   while(i < argc)
     {
-      if(argv[i][0] == '-' && argv[i][1] == '-')
-	{
-	  if(strcmp(&argv[i][2], "0") == 0) {
-	    choice = Ped::SEQ;
-	  }
-	  if(strcmp(&argv[i][2], "1") == 0) {
-	    choice = Ped::OMP;
-	  }
-	  if(strcmp(&argv[i][2], "2") == 0) {
-	    choice = Ped::PTHREAD;
-	  }
-	  if(strcmp(&argv[i][3],"timing-mode") == 0)
-	    {
-	      cout << "Timing mode on\n";
-	      timing_mode = true;
-	    }
-	  else
-	    {
-	      cerr << "Unrecognized command: \"" << argv[i] << "\". Ignoring ..." << endl;
-	    }
-	}
-      else // Assume it is a path to scenefile
-	{
-	  scenefile = argv[i];
-	}
+      if(strcmp(argv[i], "--seq") == 0){
+	choice = Ped::SEQ;
+      }
+      if(strcmp(argv[i], "--omp") == 0){
+	choice = Ped::OMP;
+      }
+      if(strcmp(argv[i], "--pthread") == 0){
+	choice = Ped::PTHREAD;
+      }
+
+      if(strncmp(argv[i], "--threads=", 10) == 0){
+	number_of_threads = atoi(&argv[i][10]);
+	cout << "Executing simulation with " << number_of_threads << " threads. \n";
+      }
+      
+      if(strcmp(argv[i], "--timing-mode") == 0){
+	cout << "Timing mode on\n";
+	timing_mode = true;
+      }
+
       i+=1;
     }
   ParseScenario parser(scenefile);
-  cout << choice;
-  cout << "\n";
-  model.setup(parser.getAgents(),choice);
+  model.setup(parser.getAgents(),choice,number_of_threads);
 
   QApplication app(argc, argv);
   
