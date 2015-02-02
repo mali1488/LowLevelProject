@@ -5,6 +5,8 @@
 #include <pthread.h>
 #include <stdio.h>
 
+#include <omp.h>
+
 struct parameters {
   int start;
   int end;
@@ -33,6 +35,7 @@ void* Ped::Model::threaded_tick(void* parameters){
     agents[i]->whereToGo();
     agents[i]->go();
   }
+  delete params;
   pthread_exit(NULL);
 }
 
@@ -40,6 +43,7 @@ void Ped::Model::tick()
 {
   std::vector<Tagent*> agents = Ped::Model::getAgents();
   int length = agents.size();
+  int delta = length / this->number_of_threads;
   
   switch(this->implementation) {
   case SEQ:
@@ -52,9 +56,9 @@ void Ped::Model::tick()
     }
   case OMP:
     {
-#pragma omp parallel num_threads(this->number_of_threads)
+    #pragma omp parallel num_threads(this->number_of_threads)
     {
-#pragma omp for 
+    #pragma omp for
       for(int i = 0; i < length; i++) {
 	agents[i]->whereToGo();
 	agents[i]->go();
@@ -67,16 +71,16 @@ void Ped::Model::tick()
     int number_of_threads = this->number_of_threads;
     pthread_t threads[number_of_threads];
     int d_agents = length / number_of_threads;
-    struct parameters p[number_of_threads];
+    struct parameters* p[number_of_threads];
     for(int i = 0; i < number_of_threads; i++){
-      p[i] = *(new struct parameters());
+      p[i] = new struct parameters();
     }
     
     for(int i = 0; i < number_of_threads; i++) {
-      p[i].start= i*d_agents;
-      p[i].end = (i + 1)*d_agents - 1;
-      p[i].agents = agents;
-      if(pthread_create(&threads[i],NULL,&(threaded_tick),(void*)&p[i])) {
+      p[i]->start= i*d_agents;
+      p[i]->end = (i + 1)*d_agents - 1;
+      p[i]->agents = agents;
+      if(pthread_create(&threads[i],NULL,&(threaded_tick),(void*)p[i])) {
 	perror("thread crash\n");
       }
     }
@@ -84,8 +88,7 @@ void Ped::Model::tick()
     for(int i = 0; i < number_of_threads; i++){
       pthread_join(threads[i], NULL);
     }
-    //pthread_join(threads[0],NULL);
-    //pthread_join(threads[1],NULL);
+
     break;
     }
   default:
