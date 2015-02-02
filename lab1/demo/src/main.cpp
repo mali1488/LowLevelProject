@@ -17,6 +17,9 @@
 #include <ctime>
 #include <cstring>
 
+#include <iostream>
+#include <fstream>
+
 #define SIMULATION_STEPS 1000000
 
 
@@ -99,6 +102,12 @@ int main(int argc, char*argv[]) {
   cout << "Time: " << elapsed_seconds.count() << " seconds." << endl;
 
   cout << "Done" << endl;
+
+  ofstream file;
+  file.open("../data.txt", std::ios::app);
+
+  file << elapsed_seconds.count() << ", ";
+
   delete (timer);
   return retval;
 }

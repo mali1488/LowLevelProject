@@ -5,6 +5,7 @@
 
 namespace Ped{
   enum IMPLEMENTATION {CUDA, VECTOR, OMP, PTHREAD, SEQ};
+
   class Model
   {
   public:
@@ -12,12 +13,20 @@ namespace Ped{
     void tick();
     const std::vector<Tagent*> getAgents() const;
     static void* threaded_tick(void* data);
+    static void* threaded_tickMain(void* data);
   private:
     
     IMPLEMENTATION implementation;
     std::vector<Tagent*> agents;
     int number_of_threads;
     
+    struct parameters {
+      int start;
+      int end;
+      std::vector<Ped::Tagent*> agents;
+    };
+
+    struct parameters** params;
   };
 }
 #endif
