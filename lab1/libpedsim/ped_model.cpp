@@ -5,19 +5,34 @@
 #include <pthread.h>
 #include <stdio.h>
 
-#include <omp.h>
-
-struct parameters {
-  int start;
-  int end;
-  std::vector<Ped::Tagent*> agents;
-};
+struct parameters;
 
 void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION choice, int numThreads)
 {
   agents = agentsInScenario;
   implementation = choice;
   number_of_threads = numThreads;
+  
+  
+  if(choice == PTHREAD){
+    std::vector<Tagent*> agents = Ped::Model::getAgents();
+    int length = agents.size();
+    int delta = length / this->number_of_threads;
+    int d_agents = length / number_of_threads; 
+    this->params = new struct parameters* [number_of_threads];
+
+    for(int i = 0; i < number_of_threads; i++){
+      this->params[i] = new struct parameters();
+    }
+    
+    for(int i = 0; i < number_of_threads; i++) {
+      this->params[i]->start= i*d_agents;
+      this->params[i]->end = (i + 1)*d_agents - 1;
+      this->params[i]->agents = agents;
+    }
+
+    this->params[number_of_threads-1]->end = length-1;
+  }
 }
 
 const std::vector<Ped::Tagent*> Ped::Model::getAgents() const
@@ -35,8 +50,21 @@ void* Ped::Model::threaded_tick(void* parameters){
     agents[i]->whereToGo();
     agents[i]->go();
   }
-  delete params;
+
   pthread_exit(NULL);
+}
+
+/* Garage hack */
+void* Ped::Model::threaded_tickMain(void* parameters){
+  struct parameters* params = (struct parameters*) parameters;
+  
+  int start = params->start;
+  int end = params->end;
+  std::vector<Ped::Tagent*> agents = params->agents;
+  for(int i = start; i <= end; i++) {
+    agents[i]->whereToGo();
+    agents[i]->go();
+  }
 }
 
 void Ped::Model::tick()
@@ -70,22 +98,16 @@ void Ped::Model::tick()
     {
     int number_of_threads = this->number_of_threads;
     pthread_t threads[number_of_threads];
-    int d_agents = length / number_of_threads;
-    struct parameters* p[number_of_threads];
-    for(int i = 0; i < number_of_threads; i++){
-      p[i] = new struct parameters();
-    }
     
-    for(int i = 0; i < number_of_threads; i++) {
-      p[i]->start= i*d_agents;
-      p[i]->end = (i + 1)*d_agents - 1;
-      p[i]->agents = agents;
-      if(pthread_create(&threads[i],NULL,&(threaded_tick),(void*)p[i])) {
+    for(int i = 0; i < number_of_threads-1; i++) {
+      if(pthread_create(&threads[i],NULL,&(threaded_tick),(void*)this->params[i])) {
 	perror("thread crash\n");
       }
     }
-    
-    for(int i = 0; i < number_of_threads; i++){
+
+    threaded_tickMain((void *) this->params[number_of_threads-1]);
+
+    for(int i = 0; i < number_of_threads-1; i++){
       pthread_join(threads[i], NULL);
     }
 
