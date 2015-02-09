@@ -4,6 +4,7 @@
 #include <iostream>
 #include <pthread.h>
 #include <stdio.h>
+#include <math.h>
 
 struct parameters;
 
@@ -112,6 +113,22 @@ void Ped::Model::tick()
     }
 
     break;
+    }
+  case SIMD: 
+    {
+      //#pragma omp simd
+      for (int i = 0; i < length; ++i) {
+	agents[i]->whereToGo();
+      }
+      //      #pragma omp simd
+      for (int i = 0; i < length; ++i) {
+	agents[i]->position.x = agents[i]->position.x + agents[i]->waypointForce.x;
+	agents[i]->position.y = agents[i]->position.y + agents[i]->waypointForce.y;
+	
+        round(agents[i]->position.x);
+	round(agents[i]->position.y);
+      }
+
     }
   default:
     {

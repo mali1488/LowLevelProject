@@ -27,6 +27,7 @@ void Ped::Tagent::init(int posX, int posY) {
   lastDestination = NULL;
 }
 
+
 void Ped::Tagent::whereToGo() {
   computeForces();
 }
