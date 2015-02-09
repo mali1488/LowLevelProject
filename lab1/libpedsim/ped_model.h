@@ -4,7 +4,7 @@
 #include "ped_agent.h"
 
 namespace Ped{
-  enum IMPLEMENTATION {CUDA, VECTOR, OMP, PTHREAD, SEQ};
+  enum IMPLEMENTATION {CUDA, VECTOR, OMP, PTHREAD, SEQ, TEST};
 
   class Model
   {
@@ -15,15 +15,11 @@ namespace Ped{
     static void* threaded_tick(void* data);
     static void* threaded_tickMain(void* data);
 
+    float* px;
+    float* py;
+    float* wx;
+    float* wy;
 
-    struct positions {
-      double* px;
-      double* py;
-      double* wx;
-      double* wy;
-    };
-
-    struct positions* positions;
   private:
     
     IMPLEMENTATION implementation;

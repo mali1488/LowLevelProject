@@ -47,6 +47,10 @@ int main(int argc, char*argv[]) {
 	choice = Ped::VECTOR;
 	cout << "vector" <<endl;
       }     
+      if(strcmp(argv[i], "--test") == 0){
+	choice = Ped::TEST;
+	cout << "test" <<endl;
+      }
       
       if(strncmp(argv[i], "--threads=", 10) == 0){
 	number_of_threads = atoi(&argv[i][10]);

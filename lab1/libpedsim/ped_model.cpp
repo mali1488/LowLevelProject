@@ -6,6 +6,11 @@
 #include <stdio.h>
 #include <math.h>
 
+#include <string.h>
+#include <stdlib.h>
+
+#include <xmmintrin.h>
+
 struct parameters;
 
 void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION choice, int numThreads)
@@ -31,20 +36,28 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
 
     this->params[number_of_threads-1]->end = length-1;
   }
-  if(choice == VECTOR) {
-    cout << "wtf\n"<< endl;
-    this->positions = new struct positions();
-    positions->px = new double[length];
-    positions->py = new double[length];
-    positions->wx = new double[length];
-    positions->wy = new double[length];
+  if(choice == VECTOR || choice == TEST) {
+    /*
+      px = new double[length];
+      py = new double[length];
+      wx = new double[length];
+      wy = new double[length];
+    */
+
+    px = (float *) malloc(sizeof(float) * length);
+    py = (float *) malloc(sizeof(float) * length);
+    wx = (float *) malloc(sizeof(float) * length);
+    wy = (float *) malloc(sizeof(float) * length);
+
     for(int i = 0; i<length; i++) {
-      positions->px[i] = agents[i]->position.x;
-      positions->py[i] = agents[i]->position.y;
-      positions->wx[i] = agents[i]->waypointForce.x;
-      positions->wx[i] = agents[i]->waypointForce.y;
+      px[i] = agents[i]->position.x;
+      py[i] = agents[i]->position.y;
+      wx[i] = agents[i]->waypointForce.x;
+      wx[i] = agents[i]->waypointForce.y;
     } 
   }
+  
+  
 }
 
 const std::vector<Ped::Tagent*> Ped::Model::getAgents() const
@@ -133,14 +146,35 @@ void Ped::Model::tick()
       }
       //      #pragma omp simd
 
-      double* __restrict__ x_arr = positions->px;
-      double* __restrict__ y_arr = positions->py;
-      double* __restrict__ wx_arr = positions->wx;
-      double* __restrict__ wy_arr = positions->wy;
+      float* x_arr = (float *) malloc(sizeof(float) * length);
+      float* y_arr = (float *) malloc(sizeof(float) * length);
+      
+      float* wx_arr = (float *) malloc(sizeof(float) * length);
+      float* wy_arr = (float *) malloc(sizeof(float) * length);
+
+      memcpy(x_arr, px, sizeof(float)*length);
+      memcpy(y_arr, py, sizeof(float)*length);
+      
+      memcpy(wx_arr, wx, sizeof(float)*length);
+      memcpy(wy_arr, wy, sizeof(float)*length);
+
+      for(int i = 0; i < length; i += 4){
+	__m128 SSEwx = _mm_load_ps(&wx_arr[i]);
+	__m128 vTemp = _mm_load_ps(&x_arr[i]);
+	__m128 v = _mm_add_ps(vTemp,SSEwx);
+	_mm_store_ps(&x_arr[i],v);
+
+	__m128 SSEwy = _mm_load_ps(&wy_arr[i]);
+	vTemp = _mm_load_ps(&y_arr[i]);
+	v = _mm_add_ps(vTemp,SSEwy);
+	_mm_store_ps(&y_arr[i],v);	
+      }
 
       for (int i = 0; i < length; i++) {
-	x_arr[i] = x_arr[i] + wx_arr[i];
-	y_arr[i] = y_arr[i] + wy_arr[i];
+	
+	//x_arr[i] = x_arr[i] + wx_arr[i];
+	//y_arr[i] = y_arr[i] + wy_arr[i];
+
 
         //round(agents[i]->position.x);
 	//round(agents[i]->position.y);
@@ -148,6 +182,28 @@ void Ped::Model::tick()
       }
 
     }
+  case TEST:{
+    for (int i = 0; i < length; ++i) {
+      agents[i]->whereToGo();
+    }
+
+    float* x_arr = (float *) malloc(sizeof(float) * length);
+    float* y_arr = (float *) malloc(sizeof(float) * length);
+      
+    float* wx_arr = (float *) malloc(sizeof(float) * length);
+    float* wy_arr = (float *) malloc(sizeof(float) * length);
+
+    memcpy(x_arr, px, sizeof(float)*length);
+    memcpy(y_arr, py, sizeof(float)*length);
+      
+    memcpy(wx_arr, wx, sizeof(float)*length);
+    memcpy(wy_arr, wy, sizeof(float)*length);
+      
+    for (int i = 0; i < length; i++) {
+      x_arr[i] = x_arr[i] + wx_arr[i];
+      y_arr[i] = y_arr[i] + wy_arr[i];
+    }
+  }
   default:
     {
       //pthread_exit(NULL);
