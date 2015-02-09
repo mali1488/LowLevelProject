@@ -145,7 +145,7 @@ void Ped::Model::tick()
 	agents[i]->whereToGo();
       }
       //      #pragma omp simd
-
+      /*
       float* x_arr = (float *) malloc(sizeof(float) * length);
       float* y_arr = (float *) malloc(sizeof(float) * length);
       
@@ -157,52 +157,31 @@ void Ped::Model::tick()
       
       memcpy(wx_arr, wx, sizeof(float)*length);
       memcpy(wy_arr, wy, sizeof(float)*length);
-
+      */
       for(int i = 0; i < length; i += 4){
-	__m128 SSEwx = _mm_load_ps(&wx_arr[i]);
-	__m128 vTemp = _mm_load_ps(&x_arr[i]);
+	__m128 SSEwx = _mm_load_ps(&wx[i]);
+	__m128 vTemp = _mm_load_ps(&px[i]);
 	__m128 v = _mm_add_ps(vTemp,SSEwx);
-	_mm_store_ps(&x_arr[i],v);
+	_mm_store_ps(&px[i],v);
 
-	__m128 SSEwy = _mm_load_ps(&wy_arr[i]);
-	vTemp = _mm_load_ps(&y_arr[i]);
+	__m128 SSEwy = _mm_load_ps(&wy[i]);
+	vTemp = _mm_load_ps(&py[i]);
 	v = _mm_add_ps(vTemp,SSEwy);
-	_mm_store_ps(&y_arr[i],v);	
+	_mm_store_ps(&py[i],v);	
       }
-
-      for (int i = 0; i < length; i++) {
-	
-	//x_arr[i] = x_arr[i] + wx_arr[i];
-	//y_arr[i] = y_arr[i] + wy_arr[i];
-
-
-        //round(agents[i]->position.x);
-	//round(agents[i]->position.y);
-	
-      }
-
+      break;
     }
-  case TEST:{
+  case TEST:
+    {
     for (int i = 0; i < length; ++i) {
       agents[i]->whereToGo();
     }
 
-    float* x_arr = (float *) malloc(sizeof(float) * length);
-    float* y_arr = (float *) malloc(sizeof(float) * length);
-      
-    float* wx_arr = (float *) malloc(sizeof(float) * length);
-    float* wy_arr = (float *) malloc(sizeof(float) * length);
-
-    memcpy(x_arr, px, sizeof(float)*length);
-    memcpy(y_arr, py, sizeof(float)*length);
-      
-    memcpy(wx_arr, wx, sizeof(float)*length);
-    memcpy(wy_arr, wy, sizeof(float)*length);
-      
     for (int i = 0; i < length; i++) {
-      x_arr[i] = x_arr[i] + wx_arr[i];
-      y_arr[i] = y_arr[i] + wy_arr[i];
+      px[i] = px[i] + wx[i];
+      py[i] = py[i] + wy[i];
     }
+    break;
   }
   default:
     {
