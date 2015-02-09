@@ -4,7 +4,7 @@
 #include "ped_agent.h"
 
 namespace Ped{
-  enum IMPLEMENTATION {CUDA, VECTOR, OMP, PTHREAD, SEQ, SIMD};
+  enum IMPLEMENTATION {CUDA, VECTOR, OMP, PTHREAD, SEQ};
 
   class Model
   {
@@ -14,6 +14,16 @@ namespace Ped{
     const std::vector<Tagent*> getAgents() const;
     static void* threaded_tick(void* data);
     static void* threaded_tickMain(void* data);
+
+
+    struct positions {
+      double* px;
+      double* py;
+      double* wx;
+      double* wy;
+    };
+
+    struct positions* positions;
   private:
     
     IMPLEMENTATION implementation;
@@ -25,8 +35,9 @@ namespace Ped{
       int end;
       std::vector<Ped::Tagent*> agents;
     };
-
     struct parameters** params;
   };
+
+  
 }
 #endif

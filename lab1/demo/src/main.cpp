@@ -43,8 +43,9 @@ int main(int argc, char*argv[]) {
       if(strcmp(argv[i], "--pthread") == 0){
 	choice = Ped::PTHREAD;
       }
-      if(strcmp(argv[i], "--simd") == 0){
-	choice = Ped::SIMD;
+      if(strcmp(argv[i], "--vector") == 0){
+	choice = Ped::VECTOR;
+	cout << "vector" <<endl;
       }     
       
       if(strncmp(argv[i], "--threads=", 10) == 0){

@@ -10,8 +10,7 @@
 
 #include <math.h>
 
-
-
+/*------------Constructors----------*/
 Ped::Tagent::Tagent(int posX, int posY) {
   Ped::Tagent::init(posX, posY);
 }
@@ -26,10 +25,14 @@ void Ped::Tagent::init(int posX, int posY) {
   destination = NULL;
   lastDestination = NULL;
 }
-
+/*----------Where to go methods-----------------*/
 
 void Ped::Tagent::whereToGo() {
   computeForces();
+}
+
+void Ped::Tagent::computeForces() {
+  waypointForce = computeWaypointForce();
 }
 
 void Ped::Tagent::go() {
@@ -39,41 +42,6 @@ void Ped::Tagent::go() {
   position.y = round(position.y + moveForce.y);
 }
 
-void Ped::Tagent::addWaypoint(Twaypoint* wp) {
-  waypoints.push_back(wp);
-}
-
-bool Ped::Tagent::removeWaypoint(const Twaypoint* wp) {
-  if (destination == wp)
-    destination = NULL;
-  if (lastDestination == wp)
-    lastDestination = NULL;
-  
-  bool removed = false;
-  for (int i = waypoints.size(); i > 0; --i) {
-    Twaypoint* currentWaypoint = waypoints.front();
-    waypoints.pop_front();
-    if (currentWaypoint != wp) {
-      waypoints.push_back(currentWaypoint);
-      removed = true;
-    }
-  }
-  
-  return removed;
-}
-
-void Ped::Tagent::clearWaypoints() {
-  destination = NULL;
-  lastDestination = NULL;
-  
-  for (int i = waypoints.size(); i > 0; --i) {
-    waypoints.pop_front();
-  }
-}
-
-void Ped::Tagent::computeForces() {
-  waypointForce = computeWaypointForce();
-}
 
 Ped::Tvector Ped::Tagent::computeWaypointForce() {
   destination = getNextDestination();
@@ -81,6 +49,17 @@ Ped::Tvector Ped::Tagent::computeWaypointForce() {
   Tvector force = waypointDirection.normalized();
 
   return force;
+}
+
+Ped::Twaypoint* Ped::Tagent::getNextDestination() {
+  Ped::Twaypoint* nextDestination = NULL;
+  if (destination != NULL) {
+    nextDestination = destination; // agent hasn't arrived yet
+  }
+  else if (!waypoints.empty()) {
+    nextDestination = getNextWaypoint();
+  }
+  return nextDestination;
 }
 
 Ped::Tvector Ped::Tagent::computeDirection() {
@@ -117,15 +96,27 @@ Ped::Tvector Ped::Tagent::computeDirection() {
   return direction;
 }
 
-Ped::Twaypoint* Ped::Tagent::getNextDestination() {
-  Ped::Twaypoint* nextDestination = NULL;
-  if (destination != NULL) {
-    nextDestination = destination; // agent hasn't arrived yet
+void Ped::Tagent::addWaypoint(Twaypoint* wp) {
+  waypoints.push_back(wp);
+}
+
+bool Ped::Tagent::removeWaypoint(const Twaypoint* wp) {
+  if (destination == wp)
+    destination = NULL;
+  if (lastDestination == wp)
+    lastDestination = NULL;
+  
+  bool removed = false;
+  for (int i = waypoints.size(); i > 0; --i) {
+    Twaypoint* currentWaypoint = waypoints.front();
+    waypoints.pop_front();
+    if (currentWaypoint != wp) {
+      waypoints.push_back(currentWaypoint);
+      removed = true;
+    }
   }
-  else if (!waypoints.empty()) {
-    nextDestination = getNextWaypoint();
-  }
-  return nextDestination;
+  
+  return removed;
 }
 
 Ped::Twaypoint* Ped::Tagent::getNextWaypoint() {
@@ -133,3 +124,13 @@ Ped::Twaypoint* Ped::Tagent::getNextWaypoint() {
   waypoints.pop_front();
   return waypoint;
 }
+
+void Ped::Tagent::clearWaypoints() {
+  destination = NULL;
+  lastDestination = NULL;
+  
+  for (int i = waypoints.size(); i > 0; --i) {
+    waypoints.pop_front();
+  }
+}
+
