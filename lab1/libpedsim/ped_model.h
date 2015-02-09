@@ -4,7 +4,7 @@
 #include "ped_agent.h"
 
 namespace Ped{
-  enum IMPLEMENTATION {CUDA, VECTOR, OMP, PTHREAD, SEQ};
+  enum IMPLEMENTATION {CUDA, VECTOR, OMP, PTHREAD, SEQ, SIMD};
 
   class Model
   {

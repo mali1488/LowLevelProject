@@ -43,7 +43,10 @@ int main(int argc, char*argv[]) {
       if(strcmp(argv[i], "--pthread") == 0){
 	choice = Ped::PTHREAD;
       }
-
+      if(strcmp(argv[i], "--simd") == 0){
+	choice = Ped::SIMD;
+      }     
+      
       if(strncmp(argv[i], "--threads=", 10) == 0){
 	number_of_threads = atoi(&argv[i][10]);
 	cout << "Executing simulation with " << number_of_threads << " threads. \n";

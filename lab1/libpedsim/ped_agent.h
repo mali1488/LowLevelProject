@@ -46,22 +46,25 @@ namespace Ped {
     void setWaypointBehavior(int mode) { waypointBehavior = mode; };
 
     bool reachedDestination() { return (destination == NULL); };
-
     
+    // TODO Should be private hehehehehe
+    Tvector position;    
+
+    // TODO Should be private
+    // The force towards the current destination
+    Tvector waypointForce;
+
   private:
     Tagent() {};
     
     // The current position
-    Tvector position;
+
 
     Twaypoint* destination;
     Twaypoint* lastDestination;
 
     deque<Twaypoint*> waypoints;
     int waypointBehavior;
-
-    // The force towards the current destination
-    Tvector waypointForce;
 
    // Computes the forces that determine the next position
     void computeForces();
