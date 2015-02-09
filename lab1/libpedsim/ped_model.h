@@ -17,9 +17,17 @@ namespace Ped{
 
     float* px;
     float* py;
+    float* pz;
+
     float* wx;
     float* wy;
+    float* wz;
 
+    float* wfx;
+    float* wfy;
+    float* wfz;
+
+    float* agents_positions;
   private:
     
     IMPLEMENTATION implementation;

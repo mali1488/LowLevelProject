@@ -37,23 +37,28 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     this->params[number_of_threads-1]->end = length-1;
   }
   if(choice == VECTOR || choice == TEST) {
-    /*
-      px = new double[length];
-      py = new double[length];
-      wx = new double[length];
-      wy = new double[length];
-    */
-
     px = (float *) malloc(sizeof(float) * length);
     py = (float *) malloc(sizeof(float) * length);
+    pz = (float *) malloc(sizeof(float) * length);
+    
     wx = (float *) malloc(sizeof(float) * length);
     wy = (float *) malloc(sizeof(float) * length);
-
+    wz = (float *) malloc(sizeof(float) * length);
+    
+    wfx = (float *) malloc(sizeof(float) * length);
+    wfy = (float *) malloc(sizeof(float) * length);
+    wfz = (float *) malloc(sizeof(float) * length);
+    
     for(int i = 0; i<length; i++) {
       px[i] = agents[i]->position.x;
       py[i] = agents[i]->position.y;
-      wx[i] = agents[i]->waypointForce.x;
-      wx[i] = agents[i]->waypointForce.y;
+      px[i] = agents[i]->position.z;
+      //      wx[i] = agents[i]->destination.x;
+      //wy[i] = agents[i]->destination.y;
+      //wz[i] = agents[i]->destination.z;
+      wfx[i] = agents[i]->waypointForce.x;
+      wfy[i] = agents[i]->waypointForce.y;
+      wfz[i] = agents[i]->waypointForce.z;
     } 
   }
   
@@ -140,24 +145,51 @@ void Ped::Model::tick()
     }
   case VECTOR: 
     {
-      //#pragma omp simd
-      for (int i = 0; i < length; i++) {
-	agents[i]->whereToGo();
-      }
-      //      #pragma omp simd
-      /*
-      float* x_arr = (float *) malloc(sizeof(float) * length);
-      float* y_arr = (float *) malloc(sizeof(float) * length);
-      
-      float* wx_arr = (float *) malloc(sizeof(float) * length);
-      float* wy_arr = (float *) malloc(sizeof(float) * length);
+      __m128 SSEx;
+      __m128 SSEy;
+      __m128 SSEz;
 
-      memcpy(x_arr, px, sizeof(float)*length);
-      memcpy(y_arr, py, sizeof(float)*length);
-      
-      memcpy(wx_arr, wx, sizeof(float)*length);
-      memcpy(wy_arr, wy, sizeof(float)*length);
-      */
+      __m128 SSEwx;
+      __m128 SSEwy;
+      __m128 SSEwz;
+
+      __m128 temp;
+
+      for (int i = 0; i < length; i += 4) {
+	// SSEx will contain four first floats starting at px[i] ...
+	SSEx = _mm_load_ps(&px[i]);
+	SSEy = _mm_load_ps(&py[i]);
+	SSEz = _mm_load_ps(&pz[i]);
+
+	SSEwx = _mm_load_ps(&wx[i]);
+	SSEwy = _mm_load_ps(&wy[i]);
+	SSEwz = _mm_load_ps(&wz[i]);
+
+	// diff (line 79 ped_waypoint)
+	SSEx = _mm_sub_ps(SSEx,SSEwx);
+	SSEy = _mm_sub_ps(SSEy,SSEwy);
+	SSEz = _mm_sub_ps(SSEz,SSEwz);
+	
+
+	// normalization starting
+	// x*x + y*y
+	temp = _mm_add_ps(_mm_mul_ps(SSEx,SSEx),_mm_mul_ps(SSEy,SSEy));
+	// temp + z*z
+	temp = _mm_add_ps(temp,_mm_mul_ps(SSEz,SSEz));
+	// sqrt(temp)
+	temp = _mm_sqrt_ps(temp);
+	
+	// SSEx / temp (normalization, line 51 ped_vector)
+	SSEx = _mm_div_ps(SSEx,temp);
+	SSEy = _mm_div_ps(SSEy,temp);
+	SSEz = _mm_div_ps(SSEz,temp);
+	// TODO check for zero division
+	
+	
+	//agents[i]->whereToGo();
+      }
+
+
       for(int i = 0; i < length; i += 4){
 	__m128 SSEwx = _mm_load_ps(&wx[i]);
 	__m128 vTemp = _mm_load_ps(&px[i]);

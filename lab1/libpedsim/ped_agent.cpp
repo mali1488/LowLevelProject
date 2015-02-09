@@ -72,7 +72,6 @@ Ped::Tvector Ped::Tagent::computeDirection() {
   bool reachesDestination = false; // if agent reaches destination in n
   if (lastDestination == NULL) {
     Twaypoint tempDestination(destination->getx(), destination->gety(), destination->getr());
-    
     tempDestination.settype(Ped::Twaypoint::TYPE_POINT);
     direction = tempDestination.getForce(position.x, position.y, 0, 0, &reachesDestination);
   }
@@ -84,11 +83,8 @@ Ped::Tvector Ped::Tagent::computeDirection() {
   }
 
   if (reachesDestination == true) {
-
     // Circular waypoint chasing
     waypoints.push_back(destination);
-
-    
     lastDestination = destination;
     destination = NULL;
   }
