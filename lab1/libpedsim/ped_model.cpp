@@ -10,6 +10,7 @@
 #include <stdlib.h>
 
 #include <xmmintrin.h>
+#include <smmintrin.h>
 
 struct parameters;
 
@@ -43,7 +44,7 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     
     wx = (float *) malloc(sizeof(float) * length);
     wy = (float *) malloc(sizeof(float) * length);
-    wz = (float *) malloc(sizeof(float) * length);
+    wz = (float *) calloc(length, sizeof(float));
 
     lenArr = (float *) malloc(sizeof(float) * length);
     
@@ -170,6 +171,7 @@ void Ped::Model::tick()
 	  wy[i] = tempDest->gety();
 	}
 
+	/* Shrinking behaviour not caused by this */
 	if (tempLastDest == NULL) {
 	  bool reachesDestination = false;
 	  //std::cout << "TESTTEST\n";
@@ -178,7 +180,7 @@ void Ped::Model::tick()
 	  Tvector direction = tempDestination.getForce(agents[i]->position.x, agents[i]->position.y, 0, 0, &reachesDestination);
 	  agents[i]->setWaypointForce(direction);
 	  
-  }
+	  }
 
 
       }
@@ -193,10 +195,25 @@ void Ped::Model::tick()
 	SSEwy = _mm_load_ps(&wy[i]);
 	SSEwz = _mm_load_ps(&wz[i]);
 
+/*
+	SSEx =_mm_round_ps(SSEx, _MM_FROUND_TO_NEAREST_INT);
+	SSEy = _mm_round_ps(SSEy, _MM_FROUND_TO_NEAREST_INT);
+	SSEz =_mm_round_ps(SSEz, _MM_FROUND_TO_NEAREST_INT);
+	SSEwx =_mm_round_ps(SSEwx, _MM_FROUND_TO_NEAREST_INT);
+	SSEwy =_mm_round_ps(SSEwy, _MM_FROUND_TO_NEAREST_INT);
+	SSEwz =_mm_round_ps(SSEwz, _MM_FROUND_TO_NEAREST_INT);
+*/
+
 	// diff (line 79 ped_waypoint)
 	SSEx = _mm_sub_ps(SSEwx,SSEx);
 	SSEy = _mm_sub_ps(SSEwy,SSEy);
 	SSEz = _mm_sub_ps(SSEwz,SSEz);
+
+	/*
+	SSEx =_mm_round_ps(SSEx, _MM_FROUND_TO_NEAREST_INT);
+	SSEy =_mm_round_ps(SSEy, _MM_FROUND_TO_NEAREST_INT);
+	SSEz =_mm_round_ps(SSEz, _MM_FROUND_TO_NEAREST_INT);
+	*/
 
 	//TODO: some kind of reached-check here? See getForce.
 
@@ -208,6 +225,8 @@ void Ped::Model::tick()
 	// sqrt(temp)
 	temp = _mm_sqrt_ps(temp);
 
+	temp = _mm_round_ps(temp, _MM_FROUND_TO_NEAREST_INT);
+
 	_mm_store_ps(&lenArr[i], temp);
 	
 	// SSEx / temp (normalization, line 51 ped_vector)
@@ -216,6 +235,11 @@ void Ped::Model::tick()
 	SSEwz = _mm_div_ps(SSEz,temp);
 	// TODO check for zero division
 	
+	SSEwx =_mm_round_ps(SSEwx, _MM_FROUND_TO_NEAREST_INT);
+	SSEwy=_mm_round_ps(SSEwy, _MM_FROUND_TO_NEAREST_INT);
+        SSEwz=_mm_round_ps(SSEwz, _MM_FROUND_TO_NEAREST_INT);
+
+
 	// Should be normalized here (corresponding to line 89 @ waypoint)
 
 	// Store result back into array
@@ -231,26 +255,32 @@ void Ped::Model::tick()
 	__m128 SSEwx = _mm_load_ps(&wx[i]);
 	__m128 vTemp = _mm_load_ps(&px[i]);
 	__m128 v = _mm_add_ps(vTemp,SSEwx);
+
 	_mm_store_ps(&px[i],v);
 
 	__m128 SSEwy = _mm_load_ps(&wy[i]);
 	vTemp = _mm_load_ps(&py[i]);
 	v = _mm_add_ps(vTemp,SSEwy);
 	_mm_store_ps(&py[i],v);	
-      }
+	}
       /* </go()> */
+
+      
 
       // Update the agents with the new values
       for(int i = 0; i < length; i++){
 	agents[i]->position.x = round(px[i]);
 	agents[i]->position.y = round(py[i]);
 
-	//std::cout << "scherman x: " << px[i] << " scherman y: " << py[i] << "\n";
+	agents[i]->setWaypointForce(Ped::Tvector(wx[i], wy[i], wz[i]));
+
+	//std::cout << "scherman x: " << wx[i] << " scherman y: " << wy[i] << "\n";
 
 	Twaypoint* tempDest = agents[i]->getDestination();
 	Twaypoint* tempLastDest = agents[i]->getLastDestination();
 
 	if(lenArr[i] == 0) { //TODO: remove?
+	  //std::cout << "ZERO!\n";
 	  agents[i]->setWaypointForce(Ped::Tvector());
 	}
 
@@ -270,6 +300,7 @@ void Ped::Model::tick()
 	tempDest->setx((float) wx[i]);
 	tempDest->sety((float) wy[i]); */
       }
+
       break;
     }
   case TEST:
