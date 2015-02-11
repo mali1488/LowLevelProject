@@ -6,6 +6,7 @@
 #include "ped_waypoint.h"
 
 #include <cmath>
+#include <iostream>
 
 // initialize static variables
 int Ped::Twaypoint::staticid = 0;
@@ -125,6 +126,7 @@ Ped::Tvector Ped::Twaypoint::getForce(double agentX, double agentY, double fromx
         return diff.normalized();
     }
     else {
+            std::cout << "---3---\n";
         // unknown waypoint type
         return Tvector();
     }

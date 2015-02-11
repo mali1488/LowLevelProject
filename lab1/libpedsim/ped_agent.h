@@ -40,19 +40,26 @@ namespace Ped {
     double getX() const { return position.x; };
     double getY() const { return position.y; };
 
+    Twaypoint* getDestination() const { return destination; };
+    Twaypoint* getLastDestination() const { return lastDestination; };
+
     void addWaypoint(Twaypoint* wp);
     bool removeWaypoint(const Twaypoint* wp);
     void clearWaypoints();
     void setWaypointBehavior(int mode) { waypointBehavior = mode; };
 
+    deque<Twaypoint*> getWaypoints() { return waypoints;};
+
     bool reachedDestination() { return (destination == NULL); };
     
-    // TODO Should be private hehehehehe
+    // TODO Should be private
     Tvector position;    
 
     // TODO Should be private
     // The force towards the current destination
     Tvector waypointForce;
+
+    void setNextDestination();
 
   private:
     Tagent() {};

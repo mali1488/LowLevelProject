@@ -51,6 +51,10 @@ Ped::Tvector Ped::Tagent::computeWaypointForce() {
   return force;
 }
 
+void Ped::Tagent::setNextDestination() {
+  destination = getNextDestination();
+}
+
 Ped::Twaypoint* Ped::Tagent::getNextDestination() {
   Ped::Twaypoint* nextDestination = NULL;
   if (destination != NULL) {

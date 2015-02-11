@@ -44,6 +44,8 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     wx = (float *) malloc(sizeof(float) * length);
     wy = (float *) malloc(sizeof(float) * length);
     wz = (float *) malloc(sizeof(float) * length);
+
+    lenArr = (float *) malloc(sizeof(float) * length);
     
     wfx = (float *) malloc(sizeof(float) * length);
     wfy = (float *) malloc(sizeof(float) * length);
@@ -52,14 +54,15 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     for(int i = 0; i<length; i++) {
       px[i] = agents[i]->position.x;
       py[i] = agents[i]->position.y;
-      px[i] = agents[i]->position.z;
-      //      wx[i] = agents[i]->destination.x;
+      pz[i] = agents[i]->position.z;
+      //wx[i] = agents[i]->destination.x;
       //wy[i] = agents[i]->destination.y;
       //wz[i] = agents[i]->destination.z;
       wfx[i] = agents[i]->waypointForce.x;
       wfy[i] = agents[i]->waypointForce.y;
       wfz[i] = agents[i]->waypointForce.z;
     } 
+
   }
   
   
@@ -110,6 +113,7 @@ void Ped::Model::tick()
 	agents[i]->whereToGo();
 	agents[i]->go();
       }
+
       break;
     }
   case OMP:
@@ -155,6 +159,25 @@ void Ped::Model::tick()
 
       __m128 temp;
 
+      /* <wheretogo()>*/
+      for(int i = 0; i < length; i++){
+	agents[i]->setNextDestination();
+	Twaypoint* tempDest = agents[i]->getDestination();
+	Twaypoint* tempLastDest = agents[i]->getLastDestination();
+
+	wx[i] = tempDest->getx();
+	wy[i] = tempDest->gety();
+
+	if(lenArr[i] < tempDest->getr()) { // TODO: weird behaviour
+	  // Circular waypoint chasing
+	  deque<Twaypoint*> waypoints = agents[i]->getWaypoints();
+	  waypoints.push_back(tempDest);
+	  //lastDestination = destination;
+	  tempLastDest = tempDest;
+	  tempDest = NULL;
+	}
+      }
+
       for (int i = 0; i < length; i += 4) {
 	// SSEx will contain four first floats starting at px[i] ...
 	SSEx = _mm_load_ps(&px[i]);
@@ -166,10 +189,11 @@ void Ped::Model::tick()
 	SSEwz = _mm_load_ps(&wz[i]);
 
 	// diff (line 79 ped_waypoint)
-	SSEx = _mm_sub_ps(SSEx,SSEwx);
-	SSEy = _mm_sub_ps(SSEy,SSEwy);
-	SSEz = _mm_sub_ps(SSEz,SSEwz);
-	
+	SSEx = _mm_sub_ps(SSEwx,SSEx);
+	SSEy = _mm_sub_ps(SSEwy,SSEy);
+	SSEz = _mm_sub_ps(SSEwz,SSEz);
+
+	//TODO: some kind of reached-check here? See getForce.
 
 	// normalization starting
 	// x*x + y*y
@@ -178,18 +202,26 @@ void Ped::Model::tick()
 	temp = _mm_add_ps(temp,_mm_mul_ps(SSEz,SSEz));
 	// sqrt(temp)
 	temp = _mm_sqrt_ps(temp);
+
+	_mm_store_ps(&lenArr[i], temp);
 	
 	// SSEx / temp (normalization, line 51 ped_vector)
-	SSEx = _mm_div_ps(SSEx,temp);
-	SSEy = _mm_div_ps(SSEy,temp);
-	SSEz = _mm_div_ps(SSEz,temp);
+	SSEwx = _mm_div_ps(SSEx,temp);
+	SSEwy = _mm_div_ps(SSEy,temp);
+	SSEwz = _mm_div_ps(SSEz,temp);
 	// TODO check for zero division
 	
+	// Should be normalized here (corresponding to line 89 @ waypoint)
+
+	// Store result back into array
+	_mm_store_ps(&wx[i], SSEwx);
+	_mm_store_ps(&wy[i], SSEwy);  
+	_mm_store_ps(&wz[i], SSEwz);
 	
-	//agents[i]->whereToGo();
       }
-
-
+      /* </wheretogo()>*/
+      
+      /* <go()> */
       for(int i = 0; i < length; i += 4){
 	__m128 SSEwx = _mm_load_ps(&wx[i]);
 	__m128 vTemp = _mm_load_ps(&px[i]);
@@ -200,6 +232,18 @@ void Ped::Model::tick()
 	vTemp = _mm_load_ps(&py[i]);
 	v = _mm_add_ps(vTemp,SSEwy);
 	_mm_store_ps(&py[i],v);	
+      }
+      /* </go()> */
+
+      // Update the agents with the new values
+      for(int i = 0; i < length; i++){
+	agents[i]->position.x = round(px[i]);
+	agents[i]->position.y = round(py[i]);
+
+	/* TODO: should this be added?
+	Twaypoint* tempDest = agents[i]->getDestination();
+	tempDest->setx((float) wx[i]);
+	tempDest->sety((float) wy[i]); */
       }
       break;
     }
