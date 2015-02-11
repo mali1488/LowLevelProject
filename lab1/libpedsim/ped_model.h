@@ -2,6 +2,8 @@
 #define _ped_model_h_
 #include <vector>
 #include "ped_agent.h"
+#include <xmmintrin.h>
+#include <smmintrin.h>
 
 namespace Ped{
   enum IMPLEMENTATION {CUDA, VECTOR, OMP, PTHREAD, SEQ, TEST};
@@ -14,6 +16,12 @@ namespace Ped{
     const std::vector<Tagent*> getAgents() const;
     static void* threaded_tick(void* data);
     static void* threaded_tickMain(void* data);
+
+    void whereToGoVec(std::vector<Tagent*> agents);
+    void goVec(int i);
+    void normalize(__m128 *SSEx, __m128 *SSEy, __m128 *SSEz, __m128 *SSEwx, __m128 *SSEwy, __m128 *SSEwz, float *lenArr, int i);
+    void calc_diff(__m128 *SSEx, __m128 *SSEy, __m128 *SSEz, __m128 SSEwx, __m128 SSEwy, __m128 SSEwz);
+    void updateAgents(int i);
 
     float* px;
     float* py;
