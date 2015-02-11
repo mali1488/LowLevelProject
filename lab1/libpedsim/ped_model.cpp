@@ -149,70 +149,7 @@ void Ped::Model::tick()
       __m128 SSEwz;
 
       __m128 temp;
-
-<<<<<<< HEAD
       /* <wheretogo()>*/
-      for(int i = 0; i < length; i++){
-	agents[i]->setNextDestination();
-	Twaypoint* tempDest = agents[i]->getDestination();
-	Twaypoint* tempLastDest = agents[i]->getLastDestination();
-	
-	if(tempDest != NULL) {
-	  wx[i] = tempDest->getx();
-	  wy[i] = tempDest->gety();
-	}
-
-	/* Shrinking behaviour not caused by this */
-	if (tempLastDest == NULL) {
-	  bool reachesDestination = false;
-	  //std::cout << "TESTTEST\n";
-	  Twaypoint tempDestination(tempDest->getx(), tempDest->gety(), tempDest->getr());
-	  tempDestination.settype(Ped::Twaypoint::TYPE_POINT);
-	  Tvector direction = tempDestination.getForce(agents[i]->position.x, agents[i]->position.y, 0, 0, &reachesDestination);
-	  agents[i]->setWaypointForce(direction);
-	  
-	  
-	}	
-      }      
-
-      for (int i = 0; i < length; i += 4) {
-	// SSEx will contain four first floats starting at px[i] ...
-	SSEx = _mm_load_ps(&px[i]);
-	SSEy = _mm_load_ps(&py[i]);
-	SSEz = _mm_load_ps(&pz[i]);
-
-	SSEwx = _mm_load_ps(&wx[i]);
-	SSEwy = _mm_load_ps(&wy[i]);
-	SSEwz = _mm_load_ps(&wz[i]);
-
-	// diff (line 79 ped_waypoint)
-	SSEx = _mm_sub_ps(SSEwx,SSEx);
-	SSEy = _mm_sub_ps(SSEwy,SSEy);
-	SSEz = _mm_sub_ps(SSEwz,SSEz);
-
-	// normalization starting
-	// x*x + y*y
-	temp = _mm_add_ps(_mm_mul_ps(SSEx,SSEx),_mm_mul_ps(SSEy,SSEy));
-	// temp + z*z
-	temp = _mm_add_ps(temp,_mm_mul_ps(SSEz,SSEz));
-	// sqrt(temp)
-	temp = _mm_sqrt_ps(temp);
-
-	_mm_store_ps(&lenArr[i], temp);
-	
-	// SSEx / temp (normalization, line 51 ped_vector)
-	SSEwx = _mm_div_ps(SSEx,temp);
-	SSEwy = _mm_div_ps(SSEy,temp);
-	SSEwz = _mm_div_ps(SSEz,temp);
-	//TODO: check for zero division
-	
-	// Is is probably normalized at this point (corresponding to line 89 @ waypoint)
-
-	// Store result back into array
-	_mm_store_ps(&wx[i], SSEwx);
-	_mm_store_ps(&wy[i], SSEwy);  
-	_mm_store_ps(&wz[i], SSEwz);
-=======
     whereToGoVec(agents);
 
       for (int i = 0; i < length; i += 4) {
@@ -232,53 +169,9 @@ void Ped::Model::tick()
           _mm_store_ps(&wx[i], SSEwx);
           _mm_store_ps(&wy[i], SSEwy);  
           _mm_store_ps(&wz[i], SSEwz);
->>>>>>> 3701156c7950a5d07a88bac951e0516690097d8e
-	
       }
       
       /* <go()> */
-<<<<<<< HEAD
-      for(int i = 0; i < length; i += 4){
-	__m128 SSEwx = _mm_load_ps(&wx[i]);
-	__m128 vTemp = _mm_load_ps(&px[i]);
-	__m128 v = _mm_add_ps(vTemp,SSEwx);
-
-	v =_mm_round_ps(v, _MM_FROUND_TO_NEAREST_INT);
-	_mm_store_ps(&px[i],v);
-
-	__m128 SSEwy = _mm_load_ps(&wy[i]);
-	vTemp = _mm_load_ps(&py[i]);
-	v = _mm_add_ps(vTemp,SSEwy);
-        v=_mm_round_ps(v, _MM_FROUND_TO_NEAREST_INT);
-
-	_mm_store_ps(&py[i],v);	
-	}
-      /* </go()> */
-
-      // Update the agents with the new values
-      for(int i = 0; i < length; i++){
-	agents[i]->position.x = px[i];
-	agents[i]->position.y = py[i];
-
-	agents[i]->setWaypointForce(Ped::Tvector(wx[i], wy[i], wz[i]));
-
-	Twaypoint* tempDest = agents[i]->getDestination();
-	Twaypoint* tempLastDest = agents[i]->getLastDestination();
-
-	if(lenArr[i] == 0) { //TODO: remove?
-	  agents[i]->setWaypointForce(Ped::Tvector());
-	}
-
-	if(tempDest != NULL){
-	  if(lenArr[i] < tempDest->getr()) { // Studs
-	    // Circular waypoint chasing
-	    deque<Twaypoint*> waypoints = agents[i]->getWaypoints();
-	    agents[i]->addWaypoint(tempDest);
-	    agents[i]->setLastDestination(tempDest);
-	    agents[i]->setDestination(NULL);
-	  }
-	}
-=======
       for(int i = 0; i < length; i += 4) {
           goVec(i);
 	  }
@@ -287,7 +180,6 @@ void Ped::Model::tick()
       // Update the agents with the new values
       for(int i = 0; i < length; i++) {
           updateAgents(i);
->>>>>>> 3701156c7950a5d07a88bac951e0516690097d8e
       }
       break;
     }
