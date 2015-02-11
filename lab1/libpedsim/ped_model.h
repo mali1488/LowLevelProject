@@ -23,6 +23,8 @@ namespace Ped{
     float* wy;
     float* wz;
 
+    float* lenArr;
+
     float* wfx;
     float* wfy;
     float* wfz;
