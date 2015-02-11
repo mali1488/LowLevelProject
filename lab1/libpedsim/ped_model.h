@@ -3,7 +3,6 @@
 #include <vector>
 #include "ped_agent.h"
 #include <xmmintrin.h>
-#include <smmintrin.h>
 
 #include <time.h>
 
