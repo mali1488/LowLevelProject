@@ -3,6 +3,8 @@
 #include <vector>
 #include "ped_agent.h"
 
+#include <time.h>
+
 namespace Ped{
   enum IMPLEMENTATION {CUDA, VECTOR, OMP, PTHREAD, SEQ, TEST};
 
