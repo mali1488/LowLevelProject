@@ -165,17 +165,22 @@ void Ped::Model::tick()
 	Twaypoint* tempDest = agents[i]->getDestination();
 	Twaypoint* tempLastDest = agents[i]->getLastDestination();
 
-	wx[i] = tempDest->getx();
-	wy[i] = tempDest->gety();
-
-	if(lenArr[i] < tempDest->getr()) { // TODO: weird behaviour
-	  // Circular waypoint chasing
-	  deque<Twaypoint*> waypoints = agents[i]->getWaypoints();
-	  waypoints.push_back(tempDest);
-	  //lastDestination = destination;
-	  tempLastDest = tempDest;
-	  tempDest = NULL;
+	if(tempDest != NULL) {
+	  wx[i] = tempDest->getx();
+	  wy[i] = tempDest->gety();
 	}
+
+	if (tempLastDest == NULL) {
+	  bool reachesDestination = false;
+	  //std::cout << "TESTTEST\n";
+	  Twaypoint tempDestination(tempDest->getx(), tempDest->gety(), tempDest->getr());
+	  tempDestination.settype(Ped::Twaypoint::TYPE_POINT);
+	  Tvector direction = tempDestination.getForce(agents[i]->position.x, agents[i]->position.y, 0, 0, &reachesDestination);
+	  agents[i]->setWaypointForce(direction);
+	  
+  }
+
+
       }
 
       for (int i = 0; i < length; i += 4) {
@@ -239,6 +244,26 @@ void Ped::Model::tick()
       for(int i = 0; i < length; i++){
 	agents[i]->position.x = round(px[i]);
 	agents[i]->position.y = round(py[i]);
+
+	//std::cout << "scherman x: " << px[i] << " scherman y: " << py[i] << "\n";
+
+	Twaypoint* tempDest = agents[i]->getDestination();
+	Twaypoint* tempLastDest = agents[i]->getLastDestination();
+
+	if(lenArr[i] == 0) { //TODO: remove?
+	  agents[i]->setWaypointForce(Ped::Tvector());
+	}
+
+	if(tempDest != NULL){
+	  if(lenArr[i] < tempDest->getr()) { // TODO: weird behaviour
+	    // Circular waypoint chasing
+	    //std::cout << "STUDSA!\n";
+	    deque<Twaypoint*> waypoints = agents[i]->getWaypoints();
+	    agents[i]->addWaypoint(tempDest);
+	    agents[i]->setLastDestination(tempDest);
+	    agents[i]->setDestination(NULL);
+	  }
+	}
 
 	/* TODO: should this be added?
 	Twaypoint* tempDest = agents[i]->getDestination();

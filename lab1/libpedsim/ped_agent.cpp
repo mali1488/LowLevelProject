@@ -7,8 +7,9 @@
 //
 #include "ped_agent.h"
 #include "ped_waypoint.h"
-
+#include <stdlib.h>
 #include <math.h>
+#include <iostream>
 
 /*------------Constructors----------*/
 Ped::Tagent::Tagent(int posX, int posY) {
@@ -68,6 +69,7 @@ Ped::Twaypoint* Ped::Tagent::getNextDestination() {
 
 Ped::Tvector Ped::Tagent::computeDirection() {
   if (destination == NULL) {
+    std::cout << "TESTING\n";
     // Don't move, if nowhere to go
     return Ped::Tvector(0, 0, 0);
   }
@@ -75,6 +77,7 @@ Ped::Tvector Ped::Tagent::computeDirection() {
   Tvector direction;
   bool reachesDestination = false; // if agent reaches destination in n
   if (lastDestination == NULL) {
+    //std::cout << "TESTTEST\n";
     Twaypoint tempDestination(destination->getx(), destination->gety(), destination->getr());
     tempDestination.settype(Ped::Twaypoint::TYPE_POINT);
     direction = tempDestination.getForce(position.x, position.y, 0, 0, &reachesDestination);

@@ -80,10 +80,13 @@ Ped::Tvector Ped::Twaypoint::getForce(double agentX, double agentY, double fromx
         Tvector diff(x - agentX, y - agentY);
 
         if(reached != NULL) {
-            if(diff.length() < r)
+	  if(diff.length() < r) {
+	    //std::cout << "HEJHOPP\n";
                 *reached = true;
-            else
+	  }
+	  else{
                 *reached = false;
+	  }
         }
         return diff.normalized();
 

@@ -8,6 +8,8 @@
 #include <cmath>
 #include <string>
 #include <sstream>
+
+#include <iostream>
 /// Default constructor, which makes sure that all the values are set to 0.
 /// \date    2012-01-16
 Ped::Tvector::Tvector() : x(0), y(0), z(0) {};
@@ -60,8 +62,9 @@ Ped::Tvector Ped::Tvector::normalized() const {
     double len = length();
 
     // null vectors cannot be normalized
-    if (len == 0)
-        return Ped::Tvector();;
+    if (len == 0) {
+      return Ped::Tvector();;
+    }
 
     return Ped::Tvector(x/len, y/len, z/len);
 }

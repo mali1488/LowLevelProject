@@ -42,6 +42,12 @@ namespace Ped {
 
     Twaypoint* getDestination() const { return destination; };
     Twaypoint* getLastDestination() const { return lastDestination; };
+    Tvector getWaypointForce() const { return waypointForce; };
+
+    void setWaypointForce(Tvector wp) { waypointForce = wp; };
+
+    void setDestination(Twaypoint* wp) { destination = wp; };
+    void setLastDestination(Twaypoint* wp) { lastDestination = wp; };
 
     void addWaypoint(Twaypoint* wp);
     bool removeWaypoint(const Twaypoint* wp);
