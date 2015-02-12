@@ -11,8 +11,12 @@
 
 #include <xmmintrin.h>
 #include <smmintrin.h>
-#include <OpenCL/opencl.h>
 
+#ifdef __APPLE__
+#include <OpenCL/opencl.h>
+#else
+#include <CL/cl.h>
+#endif
 
 struct parameters;
 
