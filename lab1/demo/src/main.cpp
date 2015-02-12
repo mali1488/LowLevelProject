@@ -51,7 +51,11 @@ int main(int argc, char*argv[]) {
 	choice = Ped::TEST;
 	cout << "test" <<endl;
       }
-      
+      if(strcmp(argv[i], "--opencl") == 0){
+	choice = Ped::OPENCL;
+	cout << "opencl" <<endl;
+      }
+
       if(strncmp(argv[i], "--threads=", 10) == 0){
 	number_of_threads = atoi(&argv[i][10]);
 	cout << "Executing simulation with " << number_of_threads << " threads. \n";

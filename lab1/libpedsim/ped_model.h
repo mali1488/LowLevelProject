@@ -3,11 +3,13 @@
 #include <vector>
 #include "ped_agent.h"
 #include <xmmintrin.h>
-
 #include <time.h>
 
+#include <OpenCL/opencl.h>
+
+
 namespace Ped{
-  enum IMPLEMENTATION {CUDA, VECTOR, OMP, PTHREAD, SEQ, TEST};
+  enum IMPLEMENTATION {CUDA, VECTOR, OMP, PTHREAD, SEQ, TEST,OPENCL};
 
   class Model
   {
@@ -24,6 +26,7 @@ namespace Ped{
     void calc_diff(__m128 *SSEx, __m128 *SSEy, __m128 *SSEz, __m128 SSEwx, __m128 SSEwy, __m128 SSEwz);
     void updateAgents(int i);
 
+    // Vectorization variables
     float* px;
     float* py;
     float* pz;
@@ -33,12 +36,29 @@ namespace Ped{
     float* wz;
 
     float* lenArr;
-
-    float* wfx;
-    float* wfy;
-    float* wfz;
-
     float* agents_positions;
+
+    // openCL variables
+    
+    cl_device_id device_id;
+    cl_context context;
+    cl_command_queue command_queue;
+    cl_mem memobjx;
+    cl_mem memobjy;
+    cl_mem memobjwx;
+    cl_mem memobjwy;
+    cl_mem memobjlenarr;
+    cl_program program;
+    cl_kernel kernel;
+    cl_platform_id platform_id;
+    cl_uint ret_num_devices; 
+    cl_uint ret_num_platforms;
+    cl_int ret;
+ 
+    FILE *fp;
+    char *source_str;
+    size_t source_size;
+    
   private:
     
     IMPLEMENTATION implementation;
