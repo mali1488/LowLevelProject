@@ -281,8 +281,15 @@ void Ped::Model::tick()
   case OPENCL:
     {
       // Create a kernel
+      /*if(ret == CL_SUCCESS){
+	puts("ret == CL_SUCCESS before clCreateKernel in Tick");
+      }
       kernel = clCreateKernel(program, "whereToGo", &ret);
-      
+      if(kernel == NULL) {
+	fprintf(stderr, "failed to create kernel in tick\n");
+	exit(1);
+      }
+      */
       ret = clEnqueueWriteBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(float)*length,px,0,NULL,NULL);
       ret = clEnqueueWriteBuffer(command_queue,memobjy,CL_TRUE,0,sizeof(float)*length,py,0,NULL,NULL);
       ret = clEnqueueWriteBuffer(command_queue,memobjwx,CL_TRUE,0,sizeof(float)*length,wx,0,NULL,NULL);
