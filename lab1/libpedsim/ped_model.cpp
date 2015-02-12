@@ -43,7 +43,7 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
 
     this->params[number_of_threads-1]->end = length-1;
   }
-  if(choice == VECTOR || choice == TEST) {
+  if(choice == VECTOR || choice == TEST || choice == OPENCL) {
     px = (float *) malloc(sizeof(float) * length);
     py = (float *) malloc(sizeof(float) * length);
     pz = (float *) malloc(sizeof(float) * length);
@@ -99,6 +99,14 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
       cout << context << "\n";
       exit(1);
     }
+    
+    // create commando queue
+    command_queue = clCreateCommandQueue(context,device_id,0,&ret);
+    if (command_queue == NULL) {
+      fprintf(stderr,"Failed to create command_queue\n");
+      exit(1);
+    }
+    
     // Create memorybuffer for the GPU
     size_t memoryToAllocate = sizeof(float)*length;
     memobjx = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
@@ -290,11 +298,17 @@ void Ped::Model::tick()
 	exit(1);
       }
       */
-      ret = clEnqueueWriteBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(float)*length,px,0,NULL,NULL);
-      ret = clEnqueueWriteBuffer(command_queue,memobjy,CL_TRUE,0,sizeof(float)*length,py,0,NULL,NULL);
-      ret = clEnqueueWriteBuffer(command_queue,memobjwx,CL_TRUE,0,sizeof(float)*length,wx,0,NULL,NULL);
-      ret = clEnqueueWriteBuffer(command_queue,memobjwy,CL_TRUE,0,sizeof(float)*length,wy,0,NULL,NULL);
-      ret = clEnqueueWriteBuffer(command_queue,memobjlenarr,CL_TRUE,0,sizeof(float)*length,lenArr,0,NULL,NULL);
+      cout << "ret innan if  = " << ret << "\n";
+      if( (ret = clEnqueueWriteBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(float)*length,px,0,NULL,NULL)) != CL_SUCCESS ||
+	  clEnqueueWriteBuffer(command_queue,memobjy,CL_TRUE,0,sizeof(float)*length,py,0,NULL,NULL) != CL_SUCCESS ||
+	  clEnqueueWriteBuffer(command_queue,memobjwx,CL_TRUE,0,sizeof(float)*length,wx,0,NULL,NULL) != CL_SUCCESS ||
+	  clEnqueueWriteBuffer(command_queue,memobjwy,CL_TRUE,0,sizeof(float)*length,wy,0,NULL,NULL) != CL_SUCCESS ||
+	  clEnqueueWriteBuffer(command_queue,memobjlenarr,CL_TRUE,0,sizeof(float)*length,lenArr,0,NULL,NULL) != CL_SUCCESS ) {
+	fprintf(stderr, "failed to enqueue parameters to kernel, in tick\n");
+	
+	cout << "ret = " << ret << "\n";
+	exit(1);
+      }
       // Set kernel args
      // ret = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&memobjx);
       //ret = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&memobjy);
@@ -307,6 +321,7 @@ void Ped::Model::tick()
       size_t local_item_size = 1;
       ret = clEnqueueNDRangeKernel(command_queue, kernel, 1,NULL, &global_item_size, &local_item_size, 0, NULL, NULL);
       if(ret != CL_SUCCESS) {
+	cout << "ret = " << ret << " :";
 	fprintf(stderr,"Failed to load kernels in tick\n");
 	exit(1);
       }
