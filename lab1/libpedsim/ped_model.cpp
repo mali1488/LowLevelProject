@@ -107,6 +107,10 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     // the program object (program). 
   program = clCreateProgramWithSource(context, 1, (const char **)&source_str,
 				      (const size_t *)&source_size, &ret);
+  if(program == NULL) {
+    fprintf(stderr,"Failed to create program\n");
+    exit(1);
+  }
   
   // Build Kernel Program. Compile the program into an executabe binary
   ret = clBuildProgram(program, 1, &device_id, NULL, NULL, NULL);
@@ -117,6 +121,10 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
   // should this be HERE???
   // Anyways we load the program to the kernel and loads the argument to the kernels
   kernel = clCreateKernel(program, "whereToGo", &ret);
+  if(kernel==NULL){
+    fprintf(stderr,"Failed to create kernel\n");
+    exit(1);
+  }
   if(clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&memobjx) != CL_SUCCESS|| 
      clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&memobjy) != CL_SUCCESS||
      clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *)&memobjwx)!= CL_SUCCESS||
@@ -125,15 +133,6 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     fprintf(stderr,"Failed to set kernel parameters\n");
     exit(1);
   }  
-  
-  // Lets execute this shit
-  size_t global_item_size = 100;
-  size_t local_item_size = 20;
-  ret = clEnqueueNDRangeKernel(command_queue, kernel, 1, NULL,&global_item_size, &local_item_size, 0, NULL, NULL);
-  if(ret != CL_SUCCESS) {
-    fprintf(stderr,"Failed to execute kernels\n");
-    exit(1);
-  }
   }
   
 }
@@ -278,14 +277,14 @@ void Ped::Model::tick()
   case OPENCL:
     {
       // Create a kernel
-      //kernel = clCreateKernel(program, "whereToGo", &ret);
-      /*
+      kernel = clCreateKernel(program, "whereToGo", &ret);
+      
       ret = clEnqueueWriteBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(float)*length,px,0,NULL,NULL);
       ret = clEnqueueWriteBuffer(command_queue,memobjy,CL_TRUE,0,sizeof(float)*length,py,0,NULL,NULL);
       ret = clEnqueueWriteBuffer(command_queue,memobjwx,CL_TRUE,0,sizeof(float)*length,wx,0,NULL,NULL);
       ret = clEnqueueWriteBuffer(command_queue,memobjwy,CL_TRUE,0,sizeof(float)*length,wy,0,NULL,NULL);
       ret = clEnqueueWriteBuffer(command_queue,memobjlenarr,CL_TRUE,0,sizeof(float)*length,lenArr,0,NULL,NULL);
-      /* Set kernel args
+      // Set kernel args
      // ret = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&memobjx);
       //ret = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&memobjy);
       //ret = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *)&memobjwx);
@@ -296,7 +295,10 @@ void Ped::Model::tick()
       size_t global_item_size = length;
       size_t local_item_size = 1;
       ret = clEnqueueNDRangeKernel(command_queue, kernel, 1,NULL, &global_item_size, &local_item_size, 0, NULL, NULL);
-      */
+      if(ret != CL_SUCCESS) {
+	fprintf(stderr,"Failed to load kernels in tick\n");
+	exit(1);
+      }
       break;
     }
   default:
