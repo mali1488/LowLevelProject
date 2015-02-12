@@ -58,6 +58,7 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
       px[i] = agents[i]->position.x;
       py[i] = agents[i]->position.y;
       pz[i] = agents[i]->position.z;
+      //std::cout << "x: " << px[i] << ",y: " << py[i] << "\n";
     } 
 
   }
@@ -100,13 +101,13 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
       exit(1);
     }
     
+    
     // create commando queue
     command_queue = clCreateCommandQueue(context,device_id,0,&ret);
     if (command_queue == NULL) {
       fprintf(stderr,"Failed to create command_queue\n");
       exit(1);
     }
-    
     // Create memorybuffer for the GPU
     size_t memoryToAllocate = sizeof(float)*length;
     memobjx = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
@@ -288,18 +289,31 @@ void Ped::Model::tick()
     }
   case OPENCL:
     {
-      // Create a kernel
-      /*if(ret == CL_SUCCESS){
-	puts("ret == CL_SUCCESS before clCreateKernel in Tick");
-      }
-      kernel = clCreateKernel(program, "whereToGo", &ret);
-      if(kernel == NULL) {
-	fprintf(stderr, "failed to create kernel in tick\n");
-	exit(1);
-      }
-      */
-      cout << "ret innan if  = " << ret << "\n";
-      if( (ret = clEnqueueWriteBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(float)*length,px,0,NULL,NULL)) != CL_SUCCESS ||
+      for(int i = 0; i < length; i++){
+        agents[i]->setNextDestination();
+        Twaypoint* tempDest = agents[i]->getDestination();
+        Twaypoint* tempLastDest = agents[i]->getLastDestination();
+       
+        if(tempDest != NULL) {
+          wx[i] = tempDest->getx();
+          wy[i] = tempDest->gety();
+        }
+ 
+        /* Shrinking behaviour not caused by this */
+        if (tempLastDest == NULL) {
+          bool reachesDestination = false;
+          //std::cout << "TESTTEST\n";
+          Twaypoint tempDestination(tempDest->getx(), tempDest->gety(), tempDest->getr());
+          tempDestination.settype(Ped::Twaypoint::TYPE_POINT);
+          Tvector direction = tempDestination.getForce(agents[i]->position.x, agents[i]->position.y, 0, 0, &reachesDestination);
+          agents[i]->setWaypointForce(direction);
+	}      
+      }     
+
+
+
+      
+      if( clEnqueueWriteBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(float)*length,px,0,NULL,NULL) != CL_SUCCESS ||
 	  clEnqueueWriteBuffer(command_queue,memobjy,CL_TRUE,0,sizeof(float)*length,py,0,NULL,NULL) != CL_SUCCESS ||
 	  clEnqueueWriteBuffer(command_queue,memobjwx,CL_TRUE,0,sizeof(float)*length,wx,0,NULL,NULL) != CL_SUCCESS ||
 	  clEnqueueWriteBuffer(command_queue,memobjwy,CL_TRUE,0,sizeof(float)*length,wy,0,NULL,NULL) != CL_SUCCESS ||
@@ -308,23 +322,32 @@ void Ped::Model::tick()
 	
 	cout << "ret = " << ret << "\n";
 	exit(1);
-      }
-      // Set kernel args
-     // ret = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&memobjx);
-      //ret = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&memobjy);
-      //ret = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *)&memobjwx);
-      //ret = clSetKernelArg(kernel, 3, sizeof(cl_mem), (void *)&memobjwy);
-      //ret = clSetKernelArg(kernel, 4, sizeof(cl_mem), (void *)&memobjlenarr);      
+      }     
 
       // Execute OpenCL kernel as data parallel 
       size_t global_item_size = length;
       size_t local_item_size = 1;
       ret = clEnqueueNDRangeKernel(command_queue, kernel, 1,NULL, &global_item_size, &local_item_size, 0, NULL, NULL);
       if(ret != CL_SUCCESS) {
-	cout << "ret = " << ret << " :";
+	//cout << "ret = " << ret << " :";
 	fprintf(stderr,"Failed to load kernels in tick\n");
 	exit(1);
       }
+      ret = clEnqueueReadBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(float)*length,px,0,NULL,NULL);
+      ret = clEnqueueReadBuffer(command_queue,memobjy,CL_TRUE,0,sizeof(float)*length,py,0,NULL,NULL);
+      ret = clEnqueueReadBuffer(command_queue,memobjwx,CL_TRUE,0,sizeof(float)*length,wx,0,NULL,NULL);
+      ret = clEnqueueReadBuffer(command_queue,memobjwy,CL_TRUE,0,sizeof(float)*length,wy,0,NULL,NULL);
+      ret = clEnqueueReadBuffer(command_queue,memobjlenarr,CL_TRUE,0,sizeof(float)*length,lenArr,0,NULL,NULL);
+     
+      // printf("check values: %f, %f, %f, %f\n",px[0],px[1],px[2],px[3]);
+      for(int i = 0; i < length; i += 4) {
+	goVec(i);
+      }
+      for(int i = 0; i < length; i++) {
+	updateAgents(i);
+      }
+      
+    
       break;
     }
   default:
