@@ -115,8 +115,6 @@ int main(int argc, char*argv[]) {
 
   cout << "Done" << endl;
 
-  cout << "Timo: " << ((float)(Ped::elapsed)) / CLOCKS_PER_SEC << endl;
-
   ofstream file;
   file.open("../data.txt", std::ios::app);
 
