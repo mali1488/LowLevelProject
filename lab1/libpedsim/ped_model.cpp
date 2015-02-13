@@ -20,6 +20,8 @@
 
 struct parameters;
 
+bool bounce = true;
+
 void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION choice, int numThreads)
 {
   agents = agentsInScenario;
@@ -59,8 +61,7 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
       py[i] = agents[i]->position.y;
       pz[i] = agents[i]->position.z;
       //std::cout << "x: " << px[i] << ",y: " << py[i] << "\n";
-    } 
-
+    }
   }
 #define MAX_SOURCE_SIZE (0x100000)
   if(choice == OPENCL) {
@@ -88,7 +89,13 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
       fprintf(stderr,"Failed to get platformID\n");
       exit(1);
     }
-    ret = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_DEFAULT, 1, &device_id, &ret_num_devices);
+
+    ret_num_devices = CL_DEVICE_MAX_COMPUTE_UNITS;
+    ret = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_CPU, 1, &device_id, &ret_num_devices);
+
+    std::cout << "max cl units: " << CL_DEVICE_MAX_COMPUTE_UNITS << "\n";
+    std::cout << "mac cl memory: " << CL_DEVICE_GLOBAL_MEM_SIZE << "\n";
+
     if(ret != CL_SUCCESS) {
       fprintf(stderr,"Failed to get deviceID\n");
       exit(1);
@@ -145,7 +152,11 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
      clSetKernelArg(kernel, 4, sizeof(cl_mem), (void *)&memobjlenarr)!= CL_SUCCESS) {
     fprintf(stderr,"Failed to set kernel parameters\n");
     exit(1);
-  }  
+  }
+
+  /* Write starting positions to device memory */
+  clEnqueueWriteBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(float)*length,px,0,NULL,NULL);
+  clEnqueueWriteBuffer(command_queue,memobjy,CL_TRUE,0,sizeof(float)*length,py,0,NULL,NULL);
   }
   
 }
@@ -309,48 +320,33 @@ void Ped::Model::tick()
           agents[i]->setWaypointForce(direction);
 	}
       }
-
-      if( clEnqueueWriteBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(float)*length,px,0,NULL,NULL) != CL_SUCCESS ||
-	  clEnqueueWriteBuffer(command_queue,memobjy,CL_TRUE,0,sizeof(float)*length,py,0,NULL,NULL) != CL_SUCCESS ||
-	  clEnqueueWriteBuffer(command_queue,memobjwx,CL_TRUE,0,sizeof(float)*length,wx,0,NULL,NULL) != CL_SUCCESS ||
-	  clEnqueueWriteBuffer(command_queue,memobjwy,CL_TRUE,0,sizeof(float)*length,wy,0,NULL,NULL) != CL_SUCCESS ||
-	  clEnqueueWriteBuffer(command_queue,memobjlenarr,CL_TRUE,0,sizeof(float)*length,lenArr,0,NULL,NULL) != CL_SUCCESS ) {
-	fprintf(stderr, "failed to enqueue parameters to kernel, in tick\n");
-	
-	cout << "ret = " << ret << "\n";
-	exit(1);
+      
+      if(bounce) {
+	clEnqueueWriteBuffer(command_queue,memobjwx,CL_TRUE,0,sizeof(float)*length,wx,0,NULL,NULL);
+	clEnqueueWriteBuffer(command_queue,memobjwy,CL_TRUE,0,sizeof(float)*length,wy,0,NULL,NULL);
+	bounce = false;
       }
+
+
+      clEnqueueWriteBuffer(command_queue,memobjlenarr,CL_TRUE,0,sizeof(float)*length,lenArr,0,NULL,NULL); 
 
       // Execute OpenCL kernel as data parallel 
       size_t global_item_size = length;
-      size_t local_item_size = 1;
+      size_t local_item_size = 100;
       ret = clEnqueueNDRangeKernel(command_queue, kernel, 1,NULL, &global_item_size, &local_item_size, 0, NULL, NULL);
       if(ret != CL_SUCCESS) {
-	//cout << "ret = " << ret << " :";
+	cout << "ret = " << ret << " :";
 	fprintf(stderr,"Failed to load kernels in tick\n");
 	exit(1);
       }
-
+      
+      /* Read results from device */
       ret = clEnqueueReadBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(float)*length,px,0,NULL,NULL);
       ret = clEnqueueReadBuffer(command_queue,memobjy,CL_TRUE,0,sizeof(float)*length,py,0,NULL,NULL);
-      ret = clEnqueueReadBuffer(command_queue,memobjwx,CL_TRUE,0,sizeof(float)*length,wx,0,NULL,NULL);
-      ret = clEnqueueReadBuffer(command_queue,memobjwy,CL_TRUE,0,sizeof(float)*length,wy,0,NULL,NULL);
       ret = clEnqueueReadBuffer(command_queue,memobjlenarr,CL_TRUE,0,sizeof(float)*length,lenArr,0,NULL,NULL);
-    
-      /*
-      clFlush(command_queue);
-      clFinish(command_queue);
-      */
-
-      // printf("check values: %f, %f, %f, %f\n",px[0],px[1],px[2],px[3]);
-      for(int i = 0; i < length; i += 4) {
-	goVec(i);
-      }
-      
-      
 
       for(int i = 0; i < length; i++) {
-	updateAgents(i);
+	updateAgents(i); // TODO: optimize
 	//std::cout << "scherman x: " << px[i] << " scherman y: " << py[i] << "\n";
       }
 
@@ -424,12 +420,12 @@ void Ped::Model::calc_diff(__m128 *SSEx, __m128 *SSEy, __m128 *SSEz, __m128 SSEw
 }
 
 void Ped::Model::updateAgents(int i) {
-  agents[i]->position.x = round(px[i]);
-  agents[i]->position.y = round(py[i]);
+
+  agents[i]->position.x = px[i];
+  agents[i]->position.y = py[i];
 
   agents[i]->setWaypointForce(Ped::Tvector(wx[i], wy[i], wz[i]));
 
-  
   Twaypoint* tempDest = agents[i]->getDestination();
   Twaypoint* tempLastDest = agents[i]->getLastDestination();
 
@@ -439,13 +435,14 @@ void Ped::Model::updateAgents(int i) {
   }
 
   if(tempDest != NULL){
-    if(lenArr[i] < tempDest->getr()) { // TODO: weird behaviour
+    if(lenArr[i] < tempDest->getr()) { // TODO: use compare-function on GPU instead
       // Circular waypoint chasing
       //std::cout << "STUDSA!\n";
       deque<Twaypoint*> waypoints = agents[i]->getWaypoints();
       agents[i]->addWaypoint(tempDest);
       agents[i]->setLastDestination(tempDest);
       agents[i]->setDestination(NULL);
+      bounce = true;
     }
   }
 }
