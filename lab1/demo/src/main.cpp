@@ -77,8 +77,8 @@ int main(int argc, char*argv[]) {
 
 
   
-
-  const int delay_ms = 100;
+  // TODO: default 100
+  const int delay_ms = 16;
   Timer *timer;
 #define TICK_LIMIT 10000
 #define AS_FAST_AS_POSSIBLE 0
@@ -114,6 +114,8 @@ int main(int argc, char*argv[]) {
   cout << "Time: " << elapsed_seconds.count() << " seconds." << endl;
 
   cout << "Done" << endl;
+
+  cout << "Timo: " << ((float)(Ped::elapsed)) / CLOCKS_PER_SEC << endl;
 
   ofstream file;
   file.open("../data.txt", std::ios::app);
