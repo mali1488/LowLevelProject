@@ -15,8 +15,6 @@
 namespace Ped{
   enum IMPLEMENTATION {CUDA, VECTOR, OMP, PTHREAD, SEQ, TEST,OPENCL};
 
-  clock_t elapsed;
-
   class Model
   {
   public:
