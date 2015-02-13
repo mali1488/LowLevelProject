@@ -307,12 +307,9 @@ void Ped::Model::tick()
           tempDestination.settype(Ped::Twaypoint::TYPE_POINT);
           Tvector direction = tempDestination.getForce(agents[i]->position.x, agents[i]->position.y, 0, 0, &reachesDestination);
           agents[i]->setWaypointForce(direction);
-	}      
-      }     
+	}
+      }
 
-
-
-      
       if( clEnqueueWriteBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(float)*length,px,0,NULL,NULL) != CL_SUCCESS ||
 	  clEnqueueWriteBuffer(command_queue,memobjy,CL_TRUE,0,sizeof(float)*length,py,0,NULL,NULL) != CL_SUCCESS ||
 	  clEnqueueWriteBuffer(command_queue,memobjwx,CL_TRUE,0,sizeof(float)*length,wx,0,NULL,NULL) != CL_SUCCESS ||
@@ -322,7 +319,7 @@ void Ped::Model::tick()
 	
 	cout << "ret = " << ret << "\n";
 	exit(1);
-      }     
+      }
 
       // Execute OpenCL kernel as data parallel 
       size_t global_item_size = length;
@@ -333,21 +330,30 @@ void Ped::Model::tick()
 	fprintf(stderr,"Failed to load kernels in tick\n");
 	exit(1);
       }
+
       ret = clEnqueueReadBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(float)*length,px,0,NULL,NULL);
       ret = clEnqueueReadBuffer(command_queue,memobjy,CL_TRUE,0,sizeof(float)*length,py,0,NULL,NULL);
       ret = clEnqueueReadBuffer(command_queue,memobjwx,CL_TRUE,0,sizeof(float)*length,wx,0,NULL,NULL);
       ret = clEnqueueReadBuffer(command_queue,memobjwy,CL_TRUE,0,sizeof(float)*length,wy,0,NULL,NULL);
       ret = clEnqueueReadBuffer(command_queue,memobjlenarr,CL_TRUE,0,sizeof(float)*length,lenArr,0,NULL,NULL);
-     
+    
+      /*
+      clFlush(command_queue);
+      clFinish(command_queue);
+      */
+
       // printf("check values: %f, %f, %f, %f\n",px[0],px[1],px[2],px[3]);
       for(int i = 0; i < length; i += 4) {
 	goVec(i);
       }
+      
+      
+
       for(int i = 0; i < length; i++) {
 	updateAgents(i);
+	//std::cout << "scherman x: " << px[i] << " scherman y: " << py[i] << "\n";
       }
-      
-    
+
       break;
     }
   default:
@@ -423,8 +429,7 @@ void Ped::Model::updateAgents(int i) {
 
   agents[i]->setWaypointForce(Ped::Tvector(wx[i], wy[i], wz[i]));
 
-  //std::cout << "scherman x: " << wx[i] << " scherman y: " << wy[i] << "\n";
-
+  
   Twaypoint* tempDest = agents[i]->getDestination();
   Twaypoint* tempLastDest = agents[i]->getLastDestination();
 
