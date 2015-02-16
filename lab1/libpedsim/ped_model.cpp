@@ -55,6 +55,9 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     wz = (float *) calloc(length, sizeof(float));
 
     lenArr = (float *) malloc(sizeof(float) * length);
+
+    rArr = (float *) malloc(sizeof(float) * length);
+    reachedArr = (float *) calloc(length, sizeof(float));
     
     for(int i = 0; i<length; i++) {
       px[i] = agents[i]->position.x;
@@ -91,7 +94,7 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     }
 
     ret_num_devices = CL_DEVICE_MAX_COMPUTE_UNITS;
-    ret = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_CPU, 1, &device_id, &ret_num_devices);
+    ret = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_GPU, 1, &device_id, &ret_num_devices);
 
     std::cout << "max cl units: " << CL_DEVICE_MAX_COMPUTE_UNITS << "\n";
     std::cout << "mac cl memory: " << CL_DEVICE_GLOBAL_MEM_SIZE << "\n";
@@ -119,9 +122,11 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     size_t memoryToAllocate = sizeof(float)*length;
     memobjx = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
     memobjy = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
-    memobjwx = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
-    memobjwy = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
-    memobjlenarr = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
+    memobjwx = clCreateBuffer(context, CL_MEM_READ_ONLY,memoryToAllocate, NULL, &ret);
+    memobjwy = clCreateBuffer(context, CL_MEM_READ_ONLY,memoryToAllocate, NULL, &ret);
+    memobjrArr = clCreateBuffer(context, CL_MEM_READ_ONLY,memoryToAllocate, NULL, &ret);
+    memobjReachedArr = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
+
     // Creates a program object for a context, and loads the source
     // code specified by the text strings(source_str) in the strings array into 
     // the program object (program). 
@@ -135,6 +140,7 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
   // Build Kernel Program. Compile the program into an executabe binary
   ret = clBuildProgram(program, 1, &device_id, NULL, NULL, NULL);
   if(ret != CL_SUCCESS) {
+    cout << ret << "\n";
     fprintf(stderr,"Failed to build program\n");
     exit(1);
   }
@@ -149,7 +155,8 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
      clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&memobjy) != CL_SUCCESS||
      clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *)&memobjwx)!= CL_SUCCESS||
      clSetKernelArg(kernel, 3, sizeof(cl_mem), (void *)&memobjwy)!= CL_SUCCESS||
-     clSetKernelArg(kernel, 4, sizeof(cl_mem), (void *)&memobjlenarr)!= CL_SUCCESS) {
+     clSetKernelArg(kernel, 4, sizeof(cl_mem), (void *)&memobjrArr)!= CL_SUCCESS ||
+     clSetKernelArg(kernel, 5, sizeof(cl_mem), (void *)&memobjReachedArr)!= CL_SUCCESS) {
     fprintf(stderr,"Failed to set kernel parameters\n");
     exit(1);
   }
@@ -252,6 +259,7 @@ void Ped::Model::tick()
       __m128 SSEwz;
 
       __m128 temp;
+      __m128 SSEr;
       /* <wheretogo()>*/
       whereToGoVec(agents);
 
@@ -265,8 +273,10 @@ void Ped::Model::tick()
 	SSEwy = _mm_load_ps(&wy[i]);
 	SSEwz = _mm_load_ps(&wz[i]);
 
+	SSEr = _mm_load_ps(&rArr[i]);
+
 	calc_diff(&SSEx, &SSEy, &SSEz, SSEwx, SSEwy, SSEwz);
-	normalize(&SSEx, &SSEy, &SSEz, &SSEwx, &SSEwy, &SSEwz, lenArr, i);
+	normalize(&SSEx, &SSEy, &SSEz, &SSEwx, &SSEwy, &SSEwz, &SSEr, reachedArr, i);
 
 	// Store result back into array
 	_mm_store_ps(&wx[i], SSEwx);
@@ -308,6 +318,7 @@ void Ped::Model::tick()
         if(tempDest != NULL) {
           wx[i] = tempDest->getx();
           wy[i] = tempDest->gety();
+	  rArr[i] = tempDest->getr();
         }
  
         /* Shrinking behaviour not caused by this */
@@ -322,13 +333,18 @@ void Ped::Model::tick()
       }
       
       if(bounce) {
-	clEnqueueWriteBuffer(command_queue,memobjwx,CL_TRUE,0,sizeof(float)*length,wx,0,NULL,NULL);
-	clEnqueueWriteBuffer(command_queue,memobjwy,CL_TRUE,0,sizeof(float)*length,wy,0,NULL,NULL);
+	clEnqueueWriteBuffer(command_queue,memobjwx,CL_FALSE,0,sizeof(float)*length,wx,0,NULL,NULL);
+	clEnqueueWriteBuffer(command_queue,memobjwy,CL_FALSE,0,sizeof(float)*length,wy,0,NULL,NULL);
+	clEnqueueWriteBuffer(command_queue,memobjrArr,CL_FALSE,0,sizeof(float)*length,rArr,0,NULL,NULL);
+
+	/* Reset reachedArr */
+	for(int i = 0; i < length; i++){
+	  reachedArr[i] = 0;
+	}
+
+	clEnqueueWriteBuffer(command_queue,memobjReachedArr,CL_TRUE,0,sizeof(float)*length,reachedArr,0,NULL,NULL);
 	bounce = false;
       }
-
-
-      clEnqueueWriteBuffer(command_queue,memobjlenarr,CL_TRUE,0,sizeof(float)*length,lenArr,0,NULL,NULL); 
 
       // Execute OpenCL kernel as data parallel 
       size_t global_item_size = length;
@@ -341,13 +357,14 @@ void Ped::Model::tick()
       }
       
       /* Read results from device */
-      ret = clEnqueueReadBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(float)*length,px,0,NULL,NULL);
-      ret = clEnqueueReadBuffer(command_queue,memobjy,CL_TRUE,0,sizeof(float)*length,py,0,NULL,NULL);
-      ret = clEnqueueReadBuffer(command_queue,memobjlenarr,CL_TRUE,0,sizeof(float)*length,lenArr,0,NULL,NULL);
+      ret = clEnqueueReadBuffer(command_queue,memobjx,CL_FALSE,0,sizeof(float)*length,px,0,NULL,NULL);
+      ret = clEnqueueReadBuffer(command_queue,memobjy,CL_FALSE,0,sizeof(float)*length,py,0,NULL,NULL);
+      ret = clEnqueueReadBuffer(command_queue,memobjReachedArr,CL_FALSE,0,sizeof(float)*length,reachedArr,0,NULL,NULL);
+
+      clFinish(command_queue);
 
       for(int i = 0; i < length; i++) {
 	updateAgents(i); // TODO: optimize
-	//std::cout << "scherman x: " << px[i] << " scherman y: " << py[i] << "\n";
       }
 
       break;
@@ -368,6 +385,7 @@ void Ped::Model::whereToGoVec(std::vector<Tagent*> agents) {
     if(tempDest != NULL) {
       wx[i] = tempDest->getx();
       wy[i] = tempDest->gety();
+      rArr[i] = tempDest->getr();
     }
     if (tempLastDest == NULL) {
       bool reachesDestination = false;
@@ -396,8 +414,10 @@ void Ped::Model::goVec(int i) {
   _mm_store_ps(&py[i],v);	
 }
 
-void Ped::Model::normalize(__m128 *SSEx, __m128 *SSEy, __m128 *SSEz, __m128 *SSEwx, __m128 *SSEwy, __m128 *SSEwz, float *lenArr, int i) {
+void Ped::Model::normalize(__m128 *SSEx, __m128 *SSEy, __m128 *SSEz, __m128 *SSEwx, __m128 *SSEwy, __m128 *SSEwz, __m128 *SSEr, float *reachedArr, int i) {
   __m128 temp;
+  __m128 reachedTemp;
+
   // normalization starting
   // x*x + y*y
   temp = _mm_add_ps(_mm_mul_ps(*SSEx,*SSEx),_mm_mul_ps(*SSEy,*SSEy));
@@ -406,7 +426,9 @@ void Ped::Model::normalize(__m128 *SSEx, __m128 *SSEy, __m128 *SSEz, __m128 *SSE
   // sqrt(temp)
   temp = _mm_sqrt_ps(temp);
 
-  _mm_store_ps(&lenArr[i], temp);
+  reachedTemp = _mm_cmplt_ps(temp, *SSEr);
+
+  _mm_store_ps(&reachedArr[i], reachedTemp);
 
   *SSEwx = _mm_div_ps(*SSEx,temp);
   *SSEwy = _mm_div_ps(*SSEy,temp);
@@ -429,13 +451,14 @@ void Ped::Model::updateAgents(int i) {
   Twaypoint* tempDest = agents[i]->getDestination();
   Twaypoint* tempLastDest = agents[i]->getLastDestination();
 
+  /* TODO: needed?
   if(lenArr[i] == 0) { //TODO: remove?
     //std::cout << "ZERO!\n";
     agents[i]->setWaypointForce(Ped::Tvector());
-  }
+    } */
 
   if(tempDest != NULL){
-    if(lenArr[i] < tempDest->getr()) { // TODO: use compare-function on GPU instead
+    if(reachedArr[i]) {
       // Circular waypoint chasing
       //std::cout << "STUDSA!\n";
       deque<Twaypoint*> waypoints = agents[i]->getWaypoints();

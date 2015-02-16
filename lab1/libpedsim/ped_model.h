@@ -26,7 +26,7 @@ namespace Ped{
 
     void whereToGoVec(std::vector<Tagent*> agents);
     void goVec(int i);
-    void normalize(__m128 *SSEx, __m128 *SSEy, __m128 *SSEz, __m128 *SSEwx, __m128 *SSEwy, __m128 *SSEwz, float *lenArr, int i);
+    void normalize(__m128 *SSEx, __m128 *SSEy, __m128 *SSEz, __m128 *SSEwx, __m128 *SSEwy, __m128 *SSEwz, __m128 *SSEr, float *reachedArr, int i);
     void calc_diff(__m128 *SSEx, __m128 *SSEy, __m128 *SSEz, __m128 SSEwx, __m128 SSEwy, __m128 SSEwz);
     void updateAgents(int i);
 
@@ -42,6 +42,9 @@ namespace Ped{
     float* lenArr;
     float* agents_positions;
 
+    float* rArr;
+    float* reachedArr;
+
     // openCL variables
     
     cl_device_id device_id;
@@ -51,7 +54,8 @@ namespace Ped{
     cl_mem memobjy;
     cl_mem memobjwx;
     cl_mem memobjwy;
-    cl_mem memobjlenarr;
+    cl_mem memobjrArr;
+    cl_mem memobjReachedArr;
     cl_program program;
     cl_kernel kernel;
     cl_platform_id platform_id;
