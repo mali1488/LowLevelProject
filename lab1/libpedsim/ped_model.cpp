@@ -413,8 +413,8 @@ void Ped::Model::goVec(int i) {
     __m128 SSEwyy = _mm_load_ps(&wy[i]);
     vTemp = _mm_load_ps(&py[i]);
     v = _mm_add_ps(vTemp,SSEwyy);
-    _mm_store_ps(&py[i], v);
     v = _mm_round_ps(v, _MM_FROUND_TO_NEAREST_INT);
+    _mm_store_ps(&py[i], v);
 }
 
 void Ped::Model::normalize(__m128 *SSEx, __m128 *SSEy, __m128 *SSEz, __m128 *SSEwx, __m128 *SSEwy, __m128 *SSEwz, __m128 *SSEr, float *reachedArr, int i) {
