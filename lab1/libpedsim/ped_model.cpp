@@ -264,35 +264,29 @@ void Ped::Model::tick()
       whereToGoVec(agents);
 
       for (int i = 0; i < length; i += 4) {
-	// SSEx will contain four first floats starting at px[i] ...
-	SSEx = _mm_load_ps(&px[i]);
-	SSEy = _mm_load_ps(&py[i]);
-	SSEz = _mm_load_ps(&pz[i]);
+          // SSEx will contain four first floats starting at px[i] ...
+          SSEx = _mm_load_ps(&px[i]);
+          SSEy = _mm_load_ps(&py[i]);
+          SSEz = _mm_load_ps(&pz[i]);
 
-	SSEwx = _mm_load_ps(&wx[i]);
-	SSEwy = _mm_load_ps(&wy[i]);
-	SSEwz = _mm_load_ps(&wz[i]);
+          SSEwx = _mm_load_ps(&wx[i]);
+          SSEwy = _mm_load_ps(&wy[i]);
+          SSEwz = _mm_load_ps(&wz[i]);
 
-	SSEr = _mm_load_ps(&rArr[i]);
+          SSEr = _mm_load_ps(&rArr[i]);
 
-	calc_diff(&SSEx, &SSEy, &SSEz, SSEwx, SSEwy, SSEwz);
-	normalize(&SSEx, &SSEy, &SSEz, &SSEwx, &SSEwy, &SSEwz, &SSEr, reachedArr, i);
+          calc_diff(&SSEx, &SSEy, &SSEz, SSEwx, SSEwy, SSEwz);
+          normalize(&SSEx, &SSEy, &SSEz, &SSEwx, &SSEwy, &SSEwz, &SSEr, reachedArr, i);
 
-	// Store result back into array
-	_mm_store_ps(&wx[i], SSEwx);
-	_mm_store_ps(&wy[i], SSEwy);  
-	_mm_store_ps(&wz[i], SSEwz);
-      }
-      
-      /* <go()> */
-      for(int i = 0; i < length; i += 4) {
-	goVec(i);
-      }
-      /* </go()> */
 
-      // Update the agents with the new values
-      for(int i = 0; i < length; i++) {
-	updateAgents(i);
+          // Store result back into array
+          _mm_store_ps(&wx[i], SSEwx);
+          _mm_store_ps(&wy[i], SSEwy);  
+          _mm_store_ps(&wz[i], SSEwz);
+          goVec(i);
+          for (int k = 0; k < 4; k++) {
+              updateAgents(i+k);
+          }
       }
       break;
     }
@@ -400,18 +394,17 @@ void Ped::Model::whereToGoVec(std::vector<Tagent*> agents) {
 }
 
 void Ped::Model::goVec(int i) {
-  __m128 SSEwx = _mm_load_ps(&wx[i]);
-  __m128 vTemp = _mm_load_ps(&px[i]);
-  __m128 v = _mm_add_ps(vTemp,SSEwx);
-  v = _mm_round_ps(v, _MM_FROUND_TO_NEAREST_INT);
+    __m128 SSEwxx = _mm_load_ps(&wx[i]);
+    __m128 vTemp = _mm_load_ps(&px[i]);
+    __m128 v = _mm_add_ps(vTemp,SSEwxx);
+    v = _mm_round_ps(v, _MM_FROUND_TO_NEAREST_INT);
+    _mm_store_ps(&px[i], v);
 
-  _mm_store_ps(&px[i],v);
-
-  __m128 SSEwy = _mm_load_ps(&wy[i]);
-  vTemp = _mm_load_ps(&py[i]);
-  v = _mm_add_ps(vTemp,SSEwy);
-  v = _mm_round_ps(v, _MM_FROUND_TO_NEAREST_INT);
-  _mm_store_ps(&py[i],v);	
+    __m128 SSEwyy = _mm_load_ps(&wy[i]);
+    vTemp = _mm_load_ps(&py[i]);
+    v = _mm_add_ps(vTemp,SSEwyy);
+    _mm_store_ps(&py[i], v);
+    v = _mm_round_ps(v, _MM_FROUND_TO_NEAREST_INT);
 }
 
 void Ped::Model::normalize(__m128 *SSEx, __m128 *SSEy, __m128 *SSEz, __m128 *SSEwx, __m128 *SSEwy, __m128 *SSEwz, __m128 *SSEr, float *reachedArr, int i) {
@@ -450,12 +443,6 @@ void Ped::Model::updateAgents(int i) {
 
   Twaypoint* tempDest = agents[i]->getDestination();
   Twaypoint* tempLastDest = agents[i]->getLastDestination();
-
-  /* TODO: needed?
-  if(lenArr[i] == 0) { //TODO: remove?
-    //std::cout << "ZERO!\n";
-    agents[i]->setWaypointForce(Ped::Tvector());
-    } */
 
   if(tempDest != NULL){
     if(reachedArr[i]) {
