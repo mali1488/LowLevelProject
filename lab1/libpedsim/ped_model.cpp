@@ -21,9 +21,12 @@
 struct parameters;
 
 bool bounce = true;
+cl_event event;
 
 void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION choice, int numThreads)
 {
+  total_time = 0;
+
   agents = agentsInScenario;
   implementation = choice;
   number_of_threads = numThreads;
@@ -113,7 +116,7 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     
     
     // create commando queue
-    command_queue = clCreateCommandQueue(context,device_id,0,&ret);
+    command_queue = clCreateCommandQueue(context,device_id,CL_QUEUE_PROFILING_ENABLE,&ret);
     if (command_queue == NULL) {
       fprintf(stderr,"Failed to create command_queue\n");
       exit(1);
@@ -343,7 +346,7 @@ void Ped::Model::tick()
       // Execute OpenCL kernel as data parallel 
       size_t global_item_size = length;
       size_t local_item_size = 100;
-      ret = clEnqueueNDRangeKernel(command_queue, kernel, 1,NULL, &global_item_size, &local_item_size, 0, NULL, NULL);
+      ret = clEnqueueNDRangeKernel(command_queue, kernel, 1,NULL, &global_item_size, &local_item_size, 0, NULL, &event);
       if(ret != CL_SUCCESS) {
 	cout << "ret = " << ret << " :";
 	fprintf(stderr,"Failed to load kernels in tick\n");
@@ -356,6 +359,13 @@ void Ped::Model::tick()
       ret = clEnqueueReadBuffer(command_queue,memobjReachedArr,CL_FALSE,0,sizeof(float)*length,reachedArr,0,NULL,NULL);
 
       clFinish(command_queue);
+
+      cl_ulong time_start, time_end;
+
+      clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, NULL);
+      clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, NULL);
+      total_time += time_end - time_start;
+
 
       for(int i = 0; i < length; i++) {
 	updateAgents(i); // TODO: optimize

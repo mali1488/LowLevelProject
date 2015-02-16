@@ -14,6 +14,7 @@
 
 namespace Ped{
   enum IMPLEMENTATION {CUDA, VECTOR, OMP, PTHREAD, SEQ, TEST,OPENCL};
+  double total_time;
 
   class Model
   {
