@@ -57,11 +57,10 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     wy = (float *) malloc(sizeof(float) * length);
     wz = (float *) calloc(length, sizeof(float));
 
-    lenArr = (float *) malloc(sizeof(float) * length);
-
     rArr = (float *) malloc(sizeof(float) * length);
     reachedArr = (float *) calloc(length, sizeof(float));
-    
+
+
     for(int i = 0; i<length; i++) {
       px[i] = agents[i]->position.x;
       py[i] = agents[i]->position.y;
@@ -129,6 +128,10 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     memobjwy = clCreateBuffer(context, CL_MEM_READ_ONLY,memoryToAllocate, NULL, &ret);
     memobjrArr = clCreateBuffer(context, CL_MEM_READ_ONLY,memoryToAllocate, NULL, &ret);
     memobjReachedArr = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
+        
+
+
+
 
     // Creates a program object for a context, and loads the source
     // code specified by the text strings(source_str) in the strings array into 
@@ -168,6 +171,7 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
   clEnqueueWriteBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(float)*length,px,0,NULL,NULL);
   clEnqueueWriteBuffer(command_queue,memobjy,CL_TRUE,0,sizeof(float)*length,py,0,NULL,NULL);
   }
+  
   
 }
 

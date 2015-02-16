@@ -20,7 +20,8 @@
 #include <iostream>
 #include <fstream>
 
-#define SIMULATION_STEPS 1000000
+//#define SIMULATION_STEPS 1000000
+#define SIMULATION_STEPS 5
 
 
 
@@ -30,7 +31,7 @@ int main(int argc, char*argv[]) {
   int i = 1;
   QString scenefile = "scenario.xml";
   Ped::IMPLEMENTATION choice = Ped::SEQ;
-  int number_of_threads = std::thread::hardware_concurrency(); // TODO: danger?
+  int number_of_threads = std::thread::hardware_concurrency();
   // Argument handling
   while(i < argc)
     {
@@ -74,8 +75,6 @@ int main(int argc, char*argv[]) {
   QApplication app(argc, argv);
   
   MainWindow mainwindow(model);
-
-
   
   // TODO: default 100
   const int delay_ms = 16;
@@ -115,7 +114,9 @@ int main(int argc, char*argv[]) {
 
   cout << "Done" << endl;
 
-  printf("\nExecution time of opencl in seconds = %0.3f seconds\n", (model.total_opencl_time / 100000000.0) );
+  if(choice == Ped::OPENCL) {
+    printf("\nExecution time of opencl in seconds = %0.3f seconds\n", (model.total_opencl_time / 100000000.0) );
+  }
 
   ofstream file;
   file.open("../data.txt", std::ios::app);
