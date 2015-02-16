@@ -115,6 +115,8 @@ int main(int argc, char*argv[]) {
 
   cout << "Done" << endl;
 
+  printf("\nExecution time of opencl in seconds = %0.3f seconds\n", (Ped::total_time / 100000000.0) );
+
   ofstream file;
   file.open("../data.txt", std::ios::app);
 
