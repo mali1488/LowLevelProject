@@ -25,7 +25,7 @@ cl_event event;
 
 void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION choice, int numThreads)
 {
-  total_time = 0;
+  total_opencl_time = 0;
 
   agents = agentsInScenario;
   implementation = choice;
@@ -364,7 +364,7 @@ void Ped::Model::tick()
 
       clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, NULL);
       clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, NULL);
-      total_time += time_end - time_start;
+      total_opencl_time += time_end - time_start;
 
 
       for(int i = 0; i < length; i++) {
@@ -398,7 +398,6 @@ void Ped::Model::whereToGoVec(std::vector<Tagent*> agents) {
       tempDestination.settype(Ped::Twaypoint::TYPE_POINT);
       Tvector direction = tempDestination.getForce(agents[i]->position.x, agents[i]->position.y, 0, 0, &reachesDestination);
       agents[i]->setWaypointForce(direction);
-
     }
   }
 }

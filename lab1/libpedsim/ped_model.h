@@ -14,11 +14,11 @@
 
 namespace Ped{
   enum IMPLEMENTATION {CUDA, VECTOR, OMP, PTHREAD, SEQ, TEST,OPENCL};
-  double total_time;
 
   class Model
   {
   public:
+    double total_opencl_time;
     void setup(std::vector<Tagent*> agentsInScenario, IMPLEMENTATION choice, int numThreads);
     void tick();
     const std::vector<Tagent*> getAgents() const;
