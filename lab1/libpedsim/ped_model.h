@@ -94,9 +94,9 @@ namespace Ped{
     int number_of_threads;
     
     struct parameters {
-      int start;
-      int end;
-      std::vector<Ped::Tagent*> agents;
+      Ped::Ttree* myTree;
+      int numAgents;
+      Model* model;
     };
     struct parameters** params;
     

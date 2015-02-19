@@ -21,6 +21,8 @@
 #include <stack>
 #include <algorithm>
 
+#include <unistd.h>
+
 #define MAX_SOURCE_SIZE (0x100000)
 struct parameters;
 
@@ -40,7 +42,6 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
 
   implementation = choice;
   number_of_threads = numThreads;
-  
 
   // Hack! do not allow agents to be on the same position. Remove duplicates from scenario.
   bool (*fn_pt)(Ped::Tagent*, Ped::Tagent*) = cmp;
@@ -59,20 +60,25 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
 
   int length = agents.size();  
   if(choice == PTHREAD){
-    int delta = length / this->number_of_threads;
-    int d_agents = length / number_of_threads; 
     this->params = new struct parameters* [number_of_threads];
    
     for(int i = 0; i < number_of_threads; i++){
       this->params[i] = new struct parameters();
     }
-    for(int i = 0; i < number_of_threads; i++) {
-      this->params[i]->start= i*d_agents;
-      this->params[i]->end = (i + 1)*d_agents - 1;
-      this->params[i]->agents = agents;
-    }
-   
-    this->params[number_of_threads-1]->end = length-1;
+
+    this->params[0]->myTree = tree->tree1;
+    this->params[0]->model = this;
+
+    this->params[1]->myTree = tree->tree2;
+    this->params[1]->model = this;
+
+    this->params[2]->myTree = tree->tree3;
+    this->params[2]->model = this;
+
+    this->params[3]->myTree = tree->tree4;
+    this->params[3]->model = this;
+
+    
   }
   if(choice == VECTOR || choice == TEST || choice == OPENCL) {
     px = (float *) malloc(sizeof(float) * length);
@@ -197,18 +203,21 @@ const std::vector<Ped::Tagent*> Ped::Model::getAgents() const
 void* Ped::Model::threaded_tick(void* parameters){
   struct parameters* params = (struct parameters*) parameters;
   
-  int start = params->start;
-  int end = params->end;
-  std::vector<Ped::Tagent*> agents = params->agents;
-  for(int i = start; i <= end; i++) {
-    agents[i]->whereToGo();
-    agents[i]->go();
+  std::set<const Ped::Tagent*> treeAgents = params->myTree->getAgents();
+
+  for (std::set<const Ped::Tagent*>::iterator it = treeAgents.begin(); it != treeAgents.end(); ++it) {
+    Ped::Tagent* currentAgent = const_cast<Ped::Tagent*>(*it);
+    currentAgent->whereToGo();
+    currentAgent->go();                 // This rather becomes a "computeNextDesiredPosition"
+    // Search for neighboring agents
+    params->model->doSafeMovement(currentAgent);
   }
 
   pthread_exit(NULL);
 }
 
 /* Garage hack */
+/*
 void* Ped::Model::threaded_tickMain(void* parameters){
   struct parameters* params = (struct parameters*) parameters;
   
@@ -220,11 +229,11 @@ void* Ped::Model::threaded_tickMain(void* parameters){
     agents[i]->go();
   }
   return NULL;
-}
+  } */
 
 void Ped::Model::tick()
 {
-  std::vector<Tagent*> agents = Ped::Model::getAgents();
+  //std::vector<Tagent*> agents = Ped::Model::getAgents();
   int length = agents.size();
   int delta = length / this->number_of_threads;
   
@@ -248,6 +257,7 @@ void Ped::Model::tick()
 	for(int i = 0; i < length; i++) {
 	  agents[i]->whereToGo();
 	  agents[i]->go();
+	  doSafeMovement(agents[i]);
 	}
       }
       break;
@@ -257,15 +267,13 @@ void Ped::Model::tick()
       int number_of_threads = this->number_of_threads;
       pthread_t threads[number_of_threads];
     
-      for(int i = 0; i < number_of_threads-1; i++) {
+      for(int i = 0; i < number_of_threads; i++) {
 	if(pthread_create(&threads[i],NULL,&(threaded_tick),(void*)this->params[i])) {
 	  perror("thread crash\n");
 	}
       }
 
-      threaded_tickMain((void *) this->params[number_of_threads-1]);
-
-      for(int i = 0; i < number_of_threads-1; i++){
+      for(int i = 0; i < number_of_threads; i++){
 	pthread_join(threads[i], NULL);
       }
 
