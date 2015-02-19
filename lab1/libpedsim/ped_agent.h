@@ -29,6 +29,21 @@ namespace Ped {
     Tagent(int posX, int posY);
     Tagent(double posX, double posY);
 
+    ////////////
+    /// THIS IS NEW
+    ///////////////////////////////////////////////
+    
+    // Returns the desired positons coordinates
+    int getDesiredX() const {return desiredPosition.x;}
+    int getDesiredY() const {return desiredPosition.y;}
+
+    // Sets the agent's position
+    void setX(int x) {position.x = x;}
+    void setY(int y) {position.y = y;}
+
+    ////////////
+    /// END NEW 
+    ///////////////////////////////////////////////
 
     // Computes forces that determine the next position
     void whereToGo();
@@ -70,8 +85,16 @@ namespace Ped {
   private:
     Tagent() {};
     
-    // The current position
+    ////////////
+    /// THIS IS NEW
+    ///////////////////////////////////////////////
 
+    // The desired next position
+    Tvector desiredPosition;
+
+    ////////////
+    /// END NEW
+    ///////////////////////////////////////////////
 
     Twaypoint* destination;
     Twaypoint* lastDestination;

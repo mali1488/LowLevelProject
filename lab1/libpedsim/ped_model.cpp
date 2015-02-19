@@ -18,25 +18,48 @@
 #include <CL/cl.h>
 #endif
 
+#include <stack>
+#include <algorithm>
+
+#define MAX_SOURCE_SIZE (0x100000)
 struct parameters;
 
 bool bounce = true;
-cl_event event;
 
-void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION choice, int numThreads)
-{
+// Comparator used to identify if two agents differ in their position
+bool cmp(Ped::Tagent *a, Ped::Tagent *b) {
+  return (a->getX() < b->getX()) || ((a->getX() == b->getX()) && (a->getY() < b->getY()));
+}
+
+void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION choice, int numThreads) {
   total_opencl_time = 0;
-
+  
   agents = agentsInScenario;
   implementation = choice;
   number_of_threads = numThreads;
   std::vector<Tagent*> agents = Ped::Model::getAgents();  
+
+  // Hack! do not allow agents to be on the same position. Remove duplicates from scenario.
+  bool (*fn_pt)(Ped::Tagent*, Ped::Tagent*) = cmp;
+  std::set<Ped::Tagent*, bool(*)(Ped::Tagent*, Ped::Tagent*)> agentsWithUniquePosition (fn_pt);
+  std::copy(agentsInScenario.begin(), agentsInScenario.end(), std::inserter(agentsWithUniquePosition, agentsWithUniquePosition.begin()));
+ 
+  agents = std::vector<Ped::Tagent*>(agentsWithUniquePosition.begin(), agentsWithUniquePosition.end());
+  treehash = new std::map<const Ped::Tagent*, Ped::Ttree*>();
+ 
+  // Create a new quadtree containing all agents
+  tree = new Ttree(NULL,treehash, 0, treeDepth, 0, 0, 1000, 800);
+
+  for (std::vector<Ped::Tagent*>::iterator it = agents.begin(); it != agents.end(); ++it){
+    tree->addAgent(*it);
+  }
+
   int length = agents.size();  
   if(choice == PTHREAD){
     int delta = length / this->number_of_threads;
     int d_agents = length / number_of_threads; 
     this->params = new struct parameters* [number_of_threads];
-
+   
     for(int i = 0; i < number_of_threads; i++){
       this->params[i] = new struct parameters();
     }
@@ -45,39 +68,36 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
       this->params[i]->end = (i + 1)*d_agents - 1;
       this->params[i]->agents = agents;
     }
-
+   
     this->params[number_of_threads-1]->end = length-1;
   }
   if(choice == VECTOR || choice == TEST || choice == OPENCL) {
     px = (float *) malloc(sizeof(float) * length);
     py = (float *) malloc(sizeof(float) * length);
     pz = (float *) malloc(sizeof(float) * length);
-    
+   
     wx = (float *) malloc(sizeof(float) * length);
     wy = (float *) malloc(sizeof(float) * length);
     wz = (float *) calloc(length, sizeof(float));
-
+   
     rArr = (float *) malloc(sizeof(float) * length);
     reachedArr = (float *) calloc(length, sizeof(float));
-
-
+   
+   
     for(int i = 0; i<length; i++) {
       px[i] = agents[i]->position.x;
       py[i] = agents[i]->position.y;
       pz[i] = agents[i]->position.z;
-      //std::cout << "x: " << px[i] << ",y: " << py[i] << "\n";
     }
+   
   }
-#define MAX_SOURCE_SIZE (0x100000)
+
   if(choice == OPENCL) {
     // ret is an error return value
     // Load the source code containing the kernel
     // and see if it succeded
     char fileName[] = "../libpedsim/whereToGo.cl";
-    //printf("file to open = %s\n",fileName);
     fp = fopen(fileName,"r");
-    //cout << "fp = " << fp << "\n";
-    //    if(!fp) {
     if(fp == NULL) {
       fprintf(stderr,"Failed to load kernel, fp == NULL\n");
       exit(1);
@@ -98,9 +118,6 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     ret_num_devices = CL_DEVICE_MAX_COMPUTE_UNITS;
     ret = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_GPU, 1, &device_id, &ret_num_devices);
 
-    std::cout << "max cl units: " << CL_DEVICE_MAX_COMPUTE_UNITS << "\n";
-    std::cout << "mac cl memory: " << CL_DEVICE_GLOBAL_MEM_SIZE << "\n";
-
     if(ret != CL_SUCCESS) {
       fprintf(stderr,"Failed to get deviceID\n");
       exit(1);
@@ -112,14 +129,14 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
       cout << context << "\n";
       exit(1);
     }
-    
-    
+        
     // create commando queue
-    command_queue = clCreateCommandQueue(context,device_id,CL_QUEUE_PROFILING_ENABLE,&ret);
+    command_queue = clCreateCommandQueue(context,device_id,0,&ret);
     if (command_queue == NULL) {
       fprintf(stderr,"Failed to create command_queue\n");
       exit(1);
     }
+
     // Create memorybuffer for the GPU
     size_t memoryToAllocate = sizeof(float)*length;
     memobjx = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
@@ -128,51 +145,45 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     memobjwy = clCreateBuffer(context, CL_MEM_READ_ONLY,memoryToAllocate, NULL, &ret);
     memobjrArr = clCreateBuffer(context, CL_MEM_READ_ONLY,memoryToAllocate, NULL, &ret);
     memobjReachedArr = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
-        
-
-
-
 
     // Creates a program object for a context, and loads the source
     // code specified by the text strings(source_str) in the strings array into 
     // the program object (program). 
-  program = clCreateProgramWithSource(context, 1, (const char **)&source_str,
-				      (const size_t *)&source_size, &ret);
-  if(program == NULL) {
-    fprintf(stderr,"Failed to create program\n");
-    exit(1);
-  }
+    program = clCreateProgramWithSource(context, 1, (const char **)&source_str,
+					(const size_t *)&source_size, &ret);
+    if(program == NULL) {
+      fprintf(stderr,"Failed to create program\n");
+      exit(1);
+    }
   
-  // Build Kernel Program. Compile the program into an executabe binary
-  ret = clBuildProgram(program, 1, &device_id, NULL, NULL, NULL);
-  if(ret != CL_SUCCESS) {
-    cout << ret << "\n";
-    fprintf(stderr,"Failed to build program\n");
-    exit(1);
-  }
-  // should this be HERE???
-  // Anyways we load the program to the kernel and loads the argument to the kernels
-  kernel = clCreateKernel(program, "whereToGo", &ret);
-  if(kernel==NULL){
-    fprintf(stderr,"Failed to create kernel\n");
-    exit(1);
-  }
-  if(clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&memobjx) != CL_SUCCESS|| 
-     clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&memobjy) != CL_SUCCESS||
-     clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *)&memobjwx)!= CL_SUCCESS||
-     clSetKernelArg(kernel, 3, sizeof(cl_mem), (void *)&memobjwy)!= CL_SUCCESS||
-     clSetKernelArg(kernel, 4, sizeof(cl_mem), (void *)&memobjrArr)!= CL_SUCCESS ||
-     clSetKernelArg(kernel, 5, sizeof(cl_mem), (void *)&memobjReachedArr)!= CL_SUCCESS) {
-    fprintf(stderr,"Failed to set kernel parameters\n");
-    exit(1);
-  }
+    // Build Kernel Program. Compile the program into an executabe binary
+    ret = clBuildProgram(program, 1, &device_id, NULL, NULL, NULL);
+    if(ret != CL_SUCCESS) {
+      cout << ret << "\n";
+      fprintf(stderr,"Failed to build program\n");
+      exit(1);
+    }
 
-  /* Write starting positions to device memory */
-  clEnqueueWriteBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(float)*length,px,0,NULL,NULL);
-  clEnqueueWriteBuffer(command_queue,memobjy,CL_TRUE,0,sizeof(float)*length,py,0,NULL,NULL);
+    // Load the program to the kernel and loads the argument to the kernels
+    kernel = clCreateKernel(program, "whereToGo", &ret);
+    if(kernel==NULL){
+      fprintf(stderr,"Failed to create kernel\n");
+      exit(1);
+    }
+    if(clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&memobjx) != CL_SUCCESS|| 
+       clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&memobjy) != CL_SUCCESS||
+       clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *)&memobjwx)!= CL_SUCCESS||
+       clSetKernelArg(kernel, 3, sizeof(cl_mem), (void *)&memobjwy)!= CL_SUCCESS||
+       clSetKernelArg(kernel, 4, sizeof(cl_mem), (void *)&memobjrArr)!= CL_SUCCESS ||
+       clSetKernelArg(kernel, 5, sizeof(cl_mem), (void *)&memobjReachedArr)!= CL_SUCCESS) {
+      fprintf(stderr,"Failed to set kernel parameters\n");
+      exit(1);
+    }
+
+    /* Write starting positions to device memory */
+    clEnqueueWriteBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(float)*length,px,0,NULL,NULL);
+    clEnqueueWriteBuffer(command_queue,memobjy,CL_TRUE,0,sizeof(float)*length,py,0,NULL,NULL);
   }
-  
-  
 }
 
 const std::vector<Ped::Tagent*> Ped::Model::getAgents() const
@@ -216,10 +227,11 @@ void Ped::Model::tick()
   
   switch(this->implementation) {
   case SEQ:
-    { // TODO: I have no idea why this is needed (Yet! http://stackoverflow.com/questions/5685471/error-jump-to-case-label)
+    { 
       for(int i = 0; i < length; i++) {
 	agents[i]->whereToGo();
 	agents[i]->go();
+	doSafeMovement(agents[i]);
       }
 
       break;
@@ -271,29 +283,29 @@ void Ped::Model::tick()
       whereToGoVec(agents);
 
       for (int i = 0; i < length; i += 4) {
-          // SSEx will contain four first floats starting at px[i] ...
-          SSEx = _mm_load_ps(&px[i]);
-          SSEy = _mm_load_ps(&py[i]);
-          SSEz = _mm_load_ps(&pz[i]);
+	// SSEx will contain four first floats starting at px[i] ...
+	SSEx = _mm_load_ps(&px[i]);
+	SSEy = _mm_load_ps(&py[i]);
+	SSEz = _mm_load_ps(&pz[i]);
 
-          SSEwx = _mm_load_ps(&wx[i]);
-          SSEwy = _mm_load_ps(&wy[i]);
-          SSEwz = _mm_load_ps(&wz[i]);
+	SSEwx = _mm_load_ps(&wx[i]);
+	SSEwy = _mm_load_ps(&wy[i]);
+	SSEwz = _mm_load_ps(&wz[i]);
 
-          SSEr = _mm_load_ps(&rArr[i]);
+	SSEr = _mm_load_ps(&rArr[i]);
 
-          calc_diff(&SSEx, &SSEy, &SSEz, SSEwx, SSEwy, SSEwz);
-          normalize(&SSEx, &SSEy, &SSEz, &SSEwx, &SSEwy, &SSEwz, &SSEr, reachedArr, i);
+	calc_diff(&SSEx, &SSEy, &SSEz, SSEwx, SSEwy, SSEwz);
+	normalize(&SSEx, &SSEy, &SSEz, &SSEwx, &SSEwy, &SSEwz, &SSEr, reachedArr, i);
 
 
-          // Store result back into array
-          _mm_store_ps(&wx[i], SSEwx);
-          _mm_store_ps(&wy[i], SSEwy);  
-          _mm_store_ps(&wz[i], SSEwz);
-          goVec(i);
-          for (int k = 0; k < 4; k++) {
-              updateAgents(i+k);
-          }
+	// Store result back into array
+	_mm_store_ps(&wx[i], SSEwx);
+	_mm_store_ps(&wy[i], SSEwy);  
+	_mm_store_ps(&wz[i], SSEwz);
+	goVec(i);
+	for (int k = 0; k < 4; k++) {
+	  updateAgents(i+k);
+	}
       }
       break;
     }
@@ -322,10 +334,8 @@ void Ped::Model::tick()
 	  rArr[i] = tempDest->getr();
         }
  
-        /* Shrinking behaviour not caused by this */
         if (tempLastDest == NULL) {
           bool reachesDestination = false;
-          //std::cout << "TESTTEST\n";
           Twaypoint tempDestination(tempDest->getx(), tempDest->gety(), tempDest->getr());
           tempDestination.settype(Ped::Twaypoint::TYPE_POINT);
           Tvector direction = tempDestination.getForce(agents[i]->position.x, agents[i]->position.y, 0, 0, &reachesDestination);
@@ -350,7 +360,7 @@ void Ped::Model::tick()
       // Execute OpenCL kernel as data parallel 
       size_t global_item_size = length;
       size_t local_item_size = 100;
-      ret = clEnqueueNDRangeKernel(command_queue, kernel, 1,NULL, &global_item_size, &local_item_size, 0, NULL, &event);
+      ret = clEnqueueNDRangeKernel(command_queue, kernel, 1,NULL, &global_item_size, &local_item_size, 0, NULL, NULL);
       if(ret != CL_SUCCESS) {
 	cout << "ret = " << ret << " :";
 	fprintf(stderr,"Failed to load kernels in tick\n");
@@ -364,24 +374,121 @@ void Ped::Model::tick()
 
       clFinish(command_queue);
 
-      cl_ulong time_start, time_end;
-
-      clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, NULL);
-      clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, NULL);
-      total_opencl_time += time_end - time_start;
-
-
       for(int i = 0; i < length; i++) {
-	updateAgents(i); // TODO: optimize
+	updateAgents(i);
       }
 
       break;
     }
   default:
     {
-      //pthread_exit(NULL);
+      break;
     }
   }
+}
+
+void  Ped::Model::doSafeMovement( Ped::Tagent *agent)
+{
+  // Search for neighboring agents
+  set<const Ped::Tagent *> neighbors = getNeighbors(agent->getX(), agent->getY(), 2);
+    
+  // Retrieve their positions
+  std::vector<std::pair<int, int> > takenPositions;
+  for (std::set<const Ped::Tagent*>::iterator neighborIt = neighbors.begin(); neighborIt != neighbors.end(); ++neighborIt) {
+    std::pair<int,int> position((*neighborIt)->getX(), (*neighborIt)->getY());
+    takenPositions.push_back(position);
+  }
+
+  // Compute the three alternative positions that would bring the agent
+  // closer to his desiredPosition, starting with the desiredPosition itself
+  std::vector<std::pair<int, int> > prioritizedAlternatives;
+  std::pair<int, int> pDesired(agent->getDesiredX(), agent->getDesiredY());
+  prioritizedAlternatives.push_back(pDesired);
+
+  int diffX = pDesired.first - agent->getX();
+  int diffY = pDesired.second - agent->getY();
+  std::pair<int, int> p1, p2;
+  if (diffX == 0 || diffY == 0)
+    {
+      // Agent wants to walk straight to North, South, West or East
+      p1 = std::make_pair(pDesired.first + diffY, pDesired.second + diffX);
+      p2 = std::make_pair(pDesired.first - diffY, pDesired.second - diffX);
+    }
+  else {
+    // Agent wants to walk diagonally
+    p1 = std::make_pair(pDesired.first, agent->getY());
+    p2 = std::make_pair(agent->getX(), pDesired.second);
+  }
+  prioritizedAlternatives.push_back(p1);
+  prioritizedAlternatives.push_back(p2);
+
+  // Find the first empty alternative position
+  for (std::vector<pair<int, int> >::iterator it = prioritizedAlternatives.begin(); it != prioritizedAlternatives.end(); ++it) {
+
+    // If the current position is not yet taken by any neighbor
+    if (std::find(takenPositions.begin(), takenPositions.end(), *it) == takenPositions.end()) {
+
+      // Set the agent's position 
+      agent->setX((*it).first);
+      agent->setY((*it).second);
+
+      // Update the quadtree
+      (*treehash)[agent]->moveAgent(agent);
+      break;
+    }
+  }
+}
+
+/// Returns the list of neighbors within dist of the point x/y. This
+/// can be the position of an agent, but it is not limited to this.
+/// \date    2012-01-29
+/// \return  The list of neighbors
+/// \param   x the x coordinate
+/// \param   y the y coordinate
+/// \param   dist the distance around x/y that will be searched for agents (search field is a square in the current implementation)
+set<const Ped::Tagent*> Ped::Model::getNeighbors(int x, int y, int dist) const {
+  // if there is no tree, return all agents
+  if(tree == NULL) 
+    return set<const Ped::Tagent*>(agents.begin(), agents.end());
+
+  // create the output list
+  list<const Ped::Tagent*> neighborList;
+  getNeighbors(neighborList, x, y, dist);
+
+  // copy the neighbors to a set
+  return set<const Ped::Tagent*>(neighborList.begin(), neighborList.end());
+}
+
+/// \date    2012-01-29
+/// \param   the list to populate
+/// \param   x the x coordinate
+/// \param   y the y coordinate
+/// \param   dist the distance around x/y that will be searched for agents (search field is a square in the current implementation)
+void Ped::Model::getNeighbors(list<const Ped::Tagent*>& neighborList, int x, int y, int dist) const {
+  stack<Ped::Ttree*> treestack;
+
+  treestack.push(tree);
+  while(!treestack.empty()) {
+    Ped::Ttree *t = treestack.top();
+    treestack.pop();
+    if (t->isleaf) {
+      t->getAgents(neighborList);
+    }
+    else {
+      if (t->tree1->intersects(x, y, dist)) treestack.push(t->tree1);
+      if (t->tree2->intersects(x, y, dist)) treestack.push(t->tree2);
+      if (t->tree3->intersects(x, y, dist)) treestack.push(t->tree3);
+      if (t->tree4->intersects(x, y, dist)) treestack.push(t->tree4);
+    }
+  }
+}
+
+/// Populates the list of neighbors that can be found around x/y./// This triggers a cleanup of the tree structure. Unused leaf nodes are collected in order to
+/// save memory. Ideally cleanup() is called every second, or about every 20 timestep.
+/// \date    2012-01-28
+void Ped::Model::cleanup() {
+  if(tree != NULL)
+    tree->cut();
 }
 
 void Ped::Model::whereToGoVec(std::vector<Tagent*> agents) {
@@ -397,7 +504,6 @@ void Ped::Model::whereToGoVec(std::vector<Tagent*> agents) {
     }
     if (tempLastDest == NULL) {
       bool reachesDestination = false;
-      //std::cout << "TESTTEST\n";
       Twaypoint tempDestination(tempDest->getx(), tempDest->gety(), tempDest->getr());
       tempDestination.settype(Ped::Twaypoint::TYPE_POINT);
       Tvector direction = tempDestination.getForce(agents[i]->position.x, agents[i]->position.y, 0, 0, &reachesDestination);
@@ -407,17 +513,17 @@ void Ped::Model::whereToGoVec(std::vector<Tagent*> agents) {
 }
 
 void Ped::Model::goVec(int i) {
-    __m128 SSEwxx = _mm_load_ps(&wx[i]);
-    __m128 vTemp = _mm_load_ps(&px[i]);
-    __m128 v = _mm_add_ps(vTemp,SSEwxx);
-    v = _mm_round_ps(v, _MM_FROUND_TO_NEAREST_INT);
-    _mm_store_ps(&px[i], v);
+  __m128 SSEwxx = _mm_load_ps(&wx[i]);
+  __m128 vTemp = _mm_load_ps(&px[i]);
+  __m128 v = _mm_add_ps(vTemp,SSEwxx);
+  v = _mm_round_ps(v, _MM_FROUND_TO_NEAREST_INT);
+  _mm_store_ps(&px[i], v);
 
-    __m128 SSEwyy = _mm_load_ps(&wy[i]);
-    vTemp = _mm_load_ps(&py[i]);
-    v = _mm_add_ps(vTemp,SSEwyy);
-    v = _mm_round_ps(v, _MM_FROUND_TO_NEAREST_INT);
-    _mm_store_ps(&py[i], v);
+  __m128 SSEwyy = _mm_load_ps(&wy[i]);
+  vTemp = _mm_load_ps(&py[i]);
+  v = _mm_add_ps(vTemp,SSEwyy);
+  v = _mm_round_ps(v, _MM_FROUND_TO_NEAREST_INT);
+  _mm_store_ps(&py[i], v);
 }
 
 void Ped::Model::normalize(__m128 *SSEx, __m128 *SSEy, __m128 *SSEz, __m128 *SSEwx, __m128 *SSEwy, __m128 *SSEwz, __m128 *SSEr, float *reachedArr, int i) {
@@ -458,9 +564,7 @@ void Ped::Model::updateAgents(int i) {
   Twaypoint* tempLastDest = agents[i]->getLastDestination();
 
   if(tempDest != NULL){
-    if(reachedArr[i]) {
-      // Circular waypoint chasing
-      //std::cout << "STUDSA!\n";
+    if(reachedArr[i]) { /* Agent i reached waypoint */
       deque<Twaypoint*> waypoints = agents[i]->getWaypoints();
       agents[i]->addWaypoint(tempDest);
       agents[i]->setLastDestination(tempDest);
@@ -468,4 +572,18 @@ void Ped::Model::updateAgents(int i) {
       bounce = true;
     }
   }
+}
+
+Ped::Model::~Model()
+{
+  if(tree != NULL)
+    {
+      delete tree;
+      tree = NULL;
+    }
+  if(treehash != NULL)
+    {
+      delete treehash;
+      treehash = NULL;
+    }
 }

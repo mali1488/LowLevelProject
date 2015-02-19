@@ -9,7 +9,6 @@ __kernel void whereToGo(__global float* x, __global float* y,__global float* wx,
   temp = sqrt(temp);
 
 
-  // TODO: get this to work
   if(temp < rArr[id]){
     reachedArr[id] = 0xffffffff;
   }
