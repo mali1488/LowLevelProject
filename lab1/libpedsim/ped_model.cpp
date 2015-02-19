@@ -34,10 +34,13 @@ bool cmp(Ped::Tagent *a, Ped::Tagent *b) {
 void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION choice, int numThreads) {
   total_opencl_time = 0;
   
+  /*
   agents = agentsInScenario;
+  std::vector<Tagent*> agents = Ped::Model::getAgents();  */
+
   implementation = choice;
   number_of_threads = numThreads;
-  std::vector<Tagent*> agents = Ped::Model::getAgents();  
+  
 
   // Hack! do not allow agents to be on the same position. Remove duplicates from scenario.
   bool (*fn_pt)(Ped::Tagent*, Ped::Tagent*) = cmp;
@@ -228,11 +231,12 @@ void Ped::Model::tick()
   switch(this->implementation) {
   case SEQ:
     { 
-      for(int i = 0; i < length; i++) {
-	agents[i]->whereToGo();
-	agents[i]->go();
-	doSafeMovement(agents[i]);
-      }
+      for (std::vector<Ped::Tagent*>::iterator it = agents.begin(); it != agents.end(); ++it) {
+	  Ped::Tagent *agent = (*it);
+	  agent->whereToGo();
+	  agent->go();                 // This rather becomes a "computeNextDesiredPosition"
+	  doSafeMovement(agent);
+	}
 
       break;
     }
