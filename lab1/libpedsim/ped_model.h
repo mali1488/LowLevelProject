@@ -85,6 +85,9 @@ namespace Ped{
 
     // Adds an agent to the tree structure
     void placeAgent(const Ped::Tagent *a);
+    void calculateWorkLoad(int amountAgents);
+
+    int *agentCounter;
 
     // Cleans up the tree and restructures it. Worth calling every now and then.
     void cleanup();
@@ -98,12 +101,12 @@ namespace Ped{
     int number_of_threads;
     
     struct parameters {
-      Ped::Ttree* myTree;
-      int numAgents;
-      int treeID;
       Model* model;
+      std::vector<Ped::Ttree*> workLoad;
+      sem_t semaphore;
     };
-    struct parameters* Params;
+    struct parameters** Params;
+
     
     ////////////
     /// THIS IS NEW
@@ -124,8 +127,6 @@ namespace Ped{
     void getNeighbors(list<const Ped::Tagent*>& neighborList, int x, int y, int d) const;
 
     set<pthread_t> threadSet;
-
-    sem_t tickSem;
 
     ////////////
     /// END NEW
