@@ -14,11 +14,13 @@
 
 #include <set>
 #include <list>
+#include <pthread.h>
 
 #include "ped_model.h"
 #include "ped_agent.h"
 
 using namespace std;
+
 
 namespace Ped {
     class Tagent;
@@ -49,14 +51,20 @@ namespace Ped {
 
         int getdepth() const { return depth; };
 
+        typedef struct lockedAgents {
+            pthread_mutex_t lock; // = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
+            set<const Ped::Tagent*> agentSet;
+        } *LockedAgents;
+
     protected:
         virtual void addChildren();
         Ttree* getChildByPosition(double x, double y);
 	int cut();
     protected:
 	std::map<const Ped::Tagent*, Ped::Ttree*> *treehash;
-        set<const Ped::Tagent*> agents;	// set and not vector, since we need to delete elements from the middle very often
+        //set<const Ped::Tagent*> agents;	// set and not vector, since we need to delete elements from the middle very often
                                         // set and not list, since deletion is based on pointer (search O(log n) instead of O(n)).
+        LockedAgents agents;
 
         bool isleaf;
         double x;

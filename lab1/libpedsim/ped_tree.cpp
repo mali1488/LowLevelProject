@@ -7,9 +7,11 @@
 #include <cassert>
 #include <cstddef>
 #include <algorithm>
+#include <pthread.h>
 
 using namespace std;
 
+pthread_mutexattr_t Attr;
 
 /// Description: set intial values
 /// \author  chgloor
@@ -18,7 +20,13 @@ Ped::Ttree::Ttree(Ped::Ttree *root,std::map<const Ped::Tagent*, Ped::Ttree*> *tr
     // more initializations here. not really necessary to put them into the initializator list, too.
   this->root = root != NULL ? root: this;
   this->treehash = treehash;
+  // this should be moved somewhere else
+  pthread_mutexattr_init(&Attr);
+  pthread_mutexattr_settype(&Attr, PTHREAD_MUTEX_RECURSIVE);
     isleaf = true;
+    this->agents = new struct lockedAgents;
+    pthread_mutex_init(&(this->agents->lock), &Attr);    
+
     x = px;
     y = py;
     w = pw;
@@ -42,7 +50,9 @@ Ped::Ttree::~Ttree() {
 
 void Ped::Ttree::clear() {
     if(isleaf) {
-        agents.clear();
+        pthread_mutex_lock(&agents->lock);
+        agents->agentSet.clear();
+        pthread_mutex_unlock(&agents->lock);
     }
     else {
         tree1->clear();
@@ -68,9 +78,11 @@ bool cmp(const Ped::Tagent *a, const Ped::Tagent *b) {
 /// \param   *a The agent to add
 void Ped::Ttree::addAgent(const Ped::Tagent *a) {
     if (isleaf) {
-        agents.insert(a);
-	//model->setResponsibleTree(this, a);
-	(*treehash)[a] = this;
+        pthread_mutex_lock(&agents->lock);
+        agents->agentSet.insert(a);
+        //model->setResponsibleTree(this, a);
+        (*treehash)[a] = this;
+        pthread_mutex_unlock(&agents->lock);
     }
     else {
         if ((a->getX() >= x+w/2) && (a->getY() >= y+h/2)) tree3->addAgent(a); // 3
@@ -79,18 +91,20 @@ void Ped::Ttree::addAgent(const Ped::Tagent *a) {
         if ((a->getX() <= x+w/2) && (a->getY() >= y+h/2)) tree4->addAgent(a); // 4
     }
 
-    if (agents.size() > 8 && depth < maxDepth) {
+    pthread_mutex_lock(&agents->lock);
+    if (agents->agentSet.size() > 8 && depth < maxDepth) {
         isleaf = false;
         addChildren();
-        while (!agents.empty()) {
-            const Ped::Tagent *a = (*agents.begin());
+        while (!agents->agentSet.empty()) {
+            const Ped::Tagent *a = (*agents->agentSet.begin());
             if ((a->getX() >= x+w/2) && (a->getY() >= y+h/2)) tree3->addAgent(a); // 3
             if ((a->getX() <= x+w/2) && (a->getY() <= y+h/2)) tree1->addAgent(a); // 1
             if ((a->getX() >= x+w/2) && (a->getY() <= y+h/2)) tree2->addAgent(a); // 2
             if ((a->getX() <= x+w/2) && (a->getY() >= y+h/2)) tree4->addAgent(a); // 4
-            agents.erase(a);
+            agents->agentSet.erase(a);
         }
     }
+    pthread_mutex_unlock(&agents->lock);
 }
 
 
@@ -127,15 +141,19 @@ Ped::Ttree* Ped::Ttree::getChildByPosition(double xIn, double yIn) {
 /// \param   *a the agent to update
 void Ped::Ttree::moveAgent(const Ped::Tagent *a) {
     if ((a->getX() < x) || (a->getX() > (x+w)) || (a->getY() < y) || (a->getY() > (y+h))) {
-        agents.erase(a);
+        pthread_mutex_lock(&agents->lock);
+        agents->agentSet.erase(a);
         root->addAgent(a);
+        pthread_mutex_unlock(&agents->lock);
     }
 }
 
 
 bool Ped::Ttree::removeAgent(const Ped::Tagent *a) {
     if(isleaf) {
-        size_t removedCount = agents.erase(a);
+        pthread_mutex_lock(&agents->lock);
+        size_t removedCount = agents->agentSet.erase(a);
+        pthread_mutex_unlock(&agents->lock);
         return (removedCount > 0);
     }
     else {
@@ -151,7 +169,10 @@ bool Ped::Ttree::removeAgent(const Ped::Tagent *a) {
 /// \return  the number of agents in this and all child nodes.
 int Ped::Ttree::cut() {
     if (isleaf)
-        return agents.size();
+        pthread_mutex_lock(&agents->lock);
+        int size = agents->agentSet.size();
+        pthread_mutex_unlock(&agents->lock);
+        return size;
 
     int count = 0;
     count += tree1->cut();
@@ -163,12 +184,13 @@ int Ped::Ttree::cut() {
         assert(tree2->isleaf == true);
         assert(tree3->isleaf == true);
         assert(tree4->isleaf == true);
-        agents.insert(tree1->agents.begin(), tree1->agents.end());
-        agents.insert(tree2->agents.begin(), tree2->agents.end());
-        agents.insert(tree3->agents.begin(), tree3->agents.end());
-        agents.insert(tree4->agents.begin(), tree4->agents.end());
+        pthread_mutex_lock(&agents->lock);
+        agents->agentSet.insert(tree1->agents->agentSet.begin(), tree1->agents->agentSet.end());
+        agents->agentSet.insert(tree2->agents->agentSet.begin(), tree2->agents->agentSet.end());
+        agents->agentSet.insert(tree3->agents->agentSet.begin(), tree3->agents->agentSet.end());
+        agents->agentSet.insert(tree4->agents->agentSet.begin(), tree4->agents->agentSet.end());
         isleaf = true;
-        for (set<const Ped::Tagent*>::iterator it = agents.begin(); it != agents.end(); ++it) {
+        for (set<const Ped::Tagent*>::iterator it = agents->agentSet.begin(); it != agents->agentSet.end(); ++it) {
             const Tagent *a = (*it);
 	    (*treehash)[a] = this;
         }
@@ -176,6 +198,7 @@ int Ped::Ttree::cut() {
         delete tree2;
         delete tree3;
         delete tree4;
+        pthread_mutex_unlock(&agents->lock);
     }
     return count;
 }
@@ -188,7 +211,7 @@ int Ped::Ttree::cut() {
 /// \todo This might be not very efficient, since all childs are checked, too. And then the set (set of pointer, but still) is being copied around.
 set<const Ped::Tagent*> Ped::Ttree::getAgents() const {
     if (isleaf)
-        return agents;
+        return agents->agentSet;
 
     set<const Ped::Tagent*> ta;
     set<const Ped::Tagent*> t1 = tree1->getAgents();
@@ -204,7 +227,7 @@ set<const Ped::Tagent*> Ped::Ttree::getAgents() const {
 
 void Ped::Ttree::getAgents(list<const Ped::Tagent*>& outputList) const {
     if(isleaf) {
-      for (set<const Ped::Tagent*>::iterator it = agents.begin(); it != agents.end(); ++it) {
+      for (set<const Ped::Tagent*>::iterator it = agents->agentSet.begin(); it != agents->agentSet.end(); ++it) {
   	    const Ped::Tagent* currentAgent = (*it);
             outputList.push_back(currentAgent);
       }
