@@ -203,6 +203,16 @@ int Ped::Ttree::cut() {
     return count;
 }
 
+void Ped::Ttree::getLeaves(std::vector<Ped::Ttree*> *ta) {
+    if (isleaf) {
+        ta->push_back(this);
+        return;
+    }
+    tree1->getLeaves(ta);
+    tree2->getLeaves(ta);
+    tree3->getLeaves(ta);
+    tree4->getLeaves(ta);
+}
 
 /// Returns the set of agents that is stored within this tree node
 /// \author  chgloor
@@ -212,7 +222,6 @@ int Ped::Ttree::cut() {
 set<const Ped::Tagent*> Ped::Ttree::getAgents() const {
     if (isleaf)
         return agents->agentSet;
-
     set<const Ped::Tagent*> ta;
     set<const Ped::Tagent*> t1 = tree1->getAgents();
     set<const Ped::Tagent*> t2 = tree2->getAgents();

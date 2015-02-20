@@ -34,6 +34,7 @@ namespace Ped {
         virtual ~Ttree();
 
         virtual void clear();
+        void getLeaves(std::vector<Ped::Ttree*> *ta);
 
         virtual void addAgent(const Ped::Tagent *a);
         virtual void moveAgent(const Ped::Tagent *a);
