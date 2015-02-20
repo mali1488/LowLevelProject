@@ -22,9 +22,13 @@
 #include <algorithm>
 
 #include <unistd.h>
+#include <semaphore.h>
 
 #define MAX_SOURCE_SIZE (0x100000)
 struct parameters;
+
+pthread_mutex_t lock;
+sem_t tickSem;
 
 bool bounce = true;
 
@@ -34,7 +38,9 @@ bool cmp(Ped::Tagent *a, Ped::Tagent *b) {
 }
 
 void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION choice, int numThreads) {
+  sem_init(&tickSem, 1, 0);
   total_opencl_time = 0;
+  pthread_mutex_init(&lock, NULL);
   
   /*
   agents = agentsInScenario;
@@ -52,7 +58,7 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
   treehash = new std::map<const Ped::Tagent*, Ped::Ttree*>();
  
   // Create a new quadtree containing all agents
-  tree = new Ttree(NULL,treehash, 0, treeDepth, 0, 0, 1000, 800);
+  tree = new Ttree(NULL,treehash, 0, treeDepth, 0, 0, 800, 600); //TODO: dimension?  
 
   for (std::vector<Ped::Tagent*>::iterator it = agents.begin(); it != agents.end(); ++it){
     tree->addAgent(*it);
@@ -60,24 +66,27 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
 
   int length = agents.size();  
   if(choice == PTHREAD){
-    this->params = new struct parameters* [number_of_threads];
+    this->Params = new struct parameters();
    
-    for(int i = 0; i < number_of_threads; i++){
-      this->params[i] = new struct parameters();
+    /*
+    std::cout << "tree1: " << tree->tree1->getAgents().size() << "\n";
+    std::cout << "tree2: " << tree->tree2->getAgents().size() << "\n";
+    std::cout << "tree3: " << tree->tree3->getAgents().size() << "\n";
+    std::cout << "tree4: " << tree->tree4->getAgents().size() << "\n"; */
+
+    this->Params->myTree = tree;
+    this->Params->treeID = 1;
+    this->Params->model = this;
+
+    pthread_t threadTemp;
+
+    std::cout << "hejhopp\n";
+
+    if(pthread_create(&threadTemp,NULL,&(threaded_tick),(void*)this->Params)) {
+      perror("thread crash\n");
+    } else {
+      threadSet.insert(threadTemp);
     }
-
-    this->params[0]->myTree = tree->tree1;
-    this->params[0]->model = this;
-
-    this->params[1]->myTree = tree->tree2;
-    this->params[1]->model = this;
-
-    this->params[2]->myTree = tree->tree3;
-    this->params[2]->model = this;
-
-    this->params[3]->myTree = tree->tree4;
-    this->params[3]->model = this;
-
     
   }
   if(choice == VECTOR || choice == TEST || choice == OPENCL) {
@@ -202,18 +211,40 @@ const std::vector<Ped::Tagent*> Ped::Model::getAgents() const
 
 void* Ped::Model::threaded_tick(void* parameters){
   struct parameters* params = (struct parameters*) parameters;
+  std::set<const Ped::Tagent*> treeAgents;
   
-  std::set<const Ped::Tagent*> treeAgents = params->myTree->getAgents();
+  //pthread_mutex_lock(&lock);
+  while(true) {
+    std::cout << "tickThread!\n";
+  sem_wait(&(params->model->tickSem));
+  switch(params->treeID){
+  case 1:
+    treeAgents = params->model->tree->tree1->getAgents();
+    break;
+  case 2:
+    treeAgents = params->model->tree->tree2->getAgents();
+    break;
+  case 3:
+    treeAgents = params->model->tree->tree3->getAgents();
+    break;
+  case 4:
+    treeAgents = params->model->tree->tree4->getAgents();
+    break;
+  }
 
   for (std::set<const Ped::Tagent*>::iterator it = treeAgents.begin(); it != treeAgents.end(); ++it) {
     Ped::Tagent* currentAgent = const_cast<Ped::Tagent*>(*it);
+    
     currentAgent->whereToGo();
     currentAgent->go();                 // This rather becomes a "computeNextDesiredPosition"
     // Search for neighboring agents
-    params->model->doSafeMovement(currentAgent);
+    params->model->doSafeMovement(currentAgent);    
   }
 
-  pthread_exit(NULL);
+  //sem_post(&(params->model->tickSem));
+  }
+  //pthread_mutex_unlock(&lock);
+  //pthread_exit(NULL);
 }
 
 /* Garage hack */
@@ -245,6 +276,7 @@ void Ped::Model::tick()
 	  agent->whereToGo();
 	  agent->go();                 // This rather becomes a "computeNextDesiredPosition"
 	  doSafeMovement(agent);
+	    
 	}
 
       break;
@@ -264,18 +296,15 @@ void Ped::Model::tick()
     }
   case PTHREAD:
     {
-      int number_of_threads = this->number_of_threads;
-      pthread_t threads[number_of_threads];
-    
-      for(int i = 0; i < number_of_threads; i++) {
-	if(pthread_create(&threads[i],NULL,&(threaded_tick),(void*)this->params[i])) {
-	  perror("thread crash\n");
-	}
+      std::cout << "tickMain!\n";
+      for(int i = 0; i < threadSet.size(); i++) { // TODO: add lock for creating new threads (otherwise this check might break)
+	sem_post(&tickSem);
       }
 
+      /*
       for(int i = 0; i < number_of_threads; i++){
 	pthread_join(threads[i], NULL);
-      }
+	} */
 
       break;
     }

@@ -13,11 +13,15 @@
 #include <CL/cl.h>
 #endif
 
+#include <set>
+#include <pthread.h>
+#include <semaphore.h>
 
 namespace Ped{
   class Tagent;
   class Ttree;
   enum IMPLEMENTATION {CUDA, VECTOR, OMP, PTHREAD, SEQ, TEST,OPENCL};
+  
 
   class Model
   {
@@ -96,9 +100,10 @@ namespace Ped{
     struct parameters {
       Ped::Ttree* myTree;
       int numAgents;
+      int treeID;
       Model* model;
     };
-    struct parameters** params;
+    struct parameters* Params;
     
     ////////////
     /// THIS IS NEW
@@ -117,6 +122,10 @@ namespace Ped{
     // Returns the set of neighboring agents for the specified position
     set<const Ped::Tagent*> getNeighbors(int x, int y, int dist) const;
     void getNeighbors(list<const Ped::Tagent*>& neighborList, int x, int y, int d) const;
+
+    set<pthread_t> threadSet;
+
+    sem_t tickSem;
 
     ////////////
     /// END NEW
