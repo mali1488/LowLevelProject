@@ -86,6 +86,7 @@ namespace Ped{
     // Adds an agent to the tree structure
     void placeAgent(const Ped::Tagent *a);
     void calculateWorkLoad(int amountAgents);
+    void naiveBalance();
 
     int *agentCounter;
 
@@ -104,6 +105,7 @@ namespace Ped{
       Model* model;
       std::vector<Ped::Ttree*> workLoad;
       sem_t semaphore;
+      int idx;
     };
     struct parameters** Params;
 

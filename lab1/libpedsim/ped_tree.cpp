@@ -235,6 +235,7 @@ set<const Ped::Tagent*> Ped::Ttree::getAgents() const {
 }
 
 void Ped::Ttree::getAgents(list<const Ped::Tagent*>& outputList) const {
+    pthread_mutex_lock(&agents->lock);
     if(isleaf) {
       for (set<const Ped::Tagent*>::iterator it = agents->agentSet.begin(); it != agents->agentSet.end(); ++it) {
   	    const Ped::Tagent* currentAgent = (*it);
@@ -247,6 +248,7 @@ void Ped::Ttree::getAgents(list<const Ped::Tagent*>& outputList) const {
         tree3->getAgents(outputList);
         tree4->getAgents(outputList);
     }
+    pthread_mutex_unlock(&agents->lock);
 }
 
 

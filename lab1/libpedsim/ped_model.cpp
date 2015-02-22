@@ -25,6 +25,9 @@
 #include <semaphore.h>
 
 #define MAX_SOURCE_SIZE (0x100000)
+
+#define BALANCE_CONSTANT 2
+
 struct parameters;
 
 sem_t tickSem;
@@ -40,25 +43,65 @@ void Ped::Model::calculateWorkLoad(int amountAgents) {
     // TODO: rounds down - problem?
     int avg = amountAgents / (this->number_of_threads);
     std::cout << "avg: " << avg << "\n";
-    vector<Ped::Ttree*> *leaves = new vector<Ped::Ttree*>;
-    tree->getLeaves(leaves);
+    std::vector<Ped::Ttree*> *leaves = new vector<Ped::Ttree*>;
+    this->tree->getLeaves(leaves);
     int thread = 0;
     int leafCounter = 0;
-    for (int i = 0; i < leaves->size(); i++) {
-        leafCounter += (*leaves)[i]->agents->agentSet.size();
+    
+    std::vector<Ped::Ttree*>::iterator it;
+    for (it = leaves->begin(); it != leaves->end(); ++it) {
+        leafCounter += (*it)->agents->agentSet.size();
         if (agentCounter[thread % number_of_threads] > avg) {
             thread++;
         }
-        Params[thread % number_of_threads]->workLoad.push_back((*leaves)[i]);
+        Params[thread % number_of_threads]->workLoad.push_back(*it);
         // TODO: checking size without checking lock???
-        agentCounter[thread % number_of_threads] += (*leaves)[i]->agents->agentSet.size();
+        agentCounter[thread % number_of_threads] += (*it)->agents->agentSet.size();
     }
     std::cout << "leaf size: " << leafCounter << "\n";
     std::cout << "agents: " << amountAgents << "\n";
+    std::cout << "agents in tree: " << tree->getAgents().size() << "\n";
     if (leafCounter != amountAgents) {
         std::cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAH\n\n\n\n\n\n\n";
     }
 
+}
+
+void Ped::Model::naiveBalance() {
+    int min_idx = 0;
+    int max_idx = 0;
+    for (int i = 1; i < number_of_threads; i++) {
+        if (agentCounter[i] < agentCounter[min_idx]) {
+            min_idx = i;
+        }
+        if (agentCounter[i] > agentCounter[max_idx]) {
+            max_idx = i;
+        }
+    }
+    //std::cout << "min idx: " << min_idx << "\nmax idx: " << max_idx << "\n";
+    //if (agentCounter[min_idx] * BALANCE_CONSTANT > agentCounter[max_idx]) {
+    if (agentCounter[max_idx] * BALANCE_CONSTANT > agentCounter[min_idx]) {
+        Ped::Ttree *heaviest_tree = Params[max_idx]->workLoad[0];
+        int heaviest_tree_agents = heaviest_tree->getAgents().size();
+        int idx = 0;
+
+        for (int i = 1; i < Params[max_idx]->workLoad.size(); i++) {
+            Ped::Ttree *currentTree = Params[max_idx]->workLoad[i];
+            int currentAgents = currentTree->getAgents().size();
+            if (currentAgents > heaviest_tree_agents) {
+                heaviest_tree = currentTree;
+                heaviest_tree_agents = currentAgents;
+                idx = i;
+            }
+        }
+        if (!heaviest_tree->isleaf) {
+            Params[min_idx]->workLoad.push_back(heaviest_tree->tree1);
+            Params[min_idx]->workLoad.push_back(heaviest_tree->tree2);
+            Params[max_idx]->workLoad.erase(Params[max_idx]->workLoad.begin() + idx);
+            Params[max_idx]->workLoad.push_back(heaviest_tree->tree3);
+            Params[max_idx]->workLoad.push_back(heaviest_tree->tree4);
+        }
+    }
 }
 
 void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION choice, int numThreads) {
@@ -96,13 +139,19 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
 
     for (int i = 0; i < number_of_threads; i++) {
         this->Params[i] = new struct parameters();
+        this->Params[i]->model = this;
         this->agentCounter[i] = 0;
+        this->Params[i]->idx = i;
         sem_init(&(this->Params[i]->semaphore), 1, 0);
         if(pthread_create(&threads[i],NULL,&(threaded_tick),(void*)this->Params[i])) {
             perror("Could not create thread!");
             exit(1);
         }
     }
+    this->Params[0]->workLoad.push_back(tree->tree1);
+    this->Params[1]->workLoad.push_back(tree->tree2);
+    this->Params[2]->workLoad.push_back(tree->tree3);
+    this->Params[3]->workLoad.push_back(tree->tree4);
 
   }
   if(choice == VECTOR || choice == TEST || choice == OPENCL) {
@@ -227,25 +276,26 @@ const std::vector<Ped::Tagent*> Ped::Model::getAgents() const
 
 void* Ped::Model::threaded_tick(void* parameters){
   struct parameters* params = (struct parameters*) parameters;
-  std::vector<Ped::Ttree*> trees = params->workLoad;
+  std::vector<Ped::Ttree*> *trees;
+  trees = &(params->workLoad);
   
   while(true) {
     sem_wait(&(params->semaphore));
-    std::cout << "tickThread!\n";
-    
-    for (std::vector<Ped::Ttree*>::iterator i = trees.begin(); i != trees.end(); ++i) {
-        std::cout << "1!\n";
+    //std::cout << "thread id: " << params->idx << "\nworkload size: " << trees->size() << "\n";
+    int agentsUpdated = 0;    
+    for (std::vector<Ped::Ttree*>::iterator i = trees->begin(); i != trees->end(); ++i) {
         std::set<const Ped::Tagent*> agents = (*i)->getAgents();
+        agentsUpdated += agents.size();
         for (std::set<const Ped::Tagent*>::iterator it = agents.begin(); it != agents.end(); ++it) {
-            std::cout << "2!\n";
             Ped::Tagent* currentAgent = const_cast<Ped::Tagent*>(*it);
-
             currentAgent->whereToGo();
             currentAgent->go();                 // This rather becomes a "computeNextDesiredPosition"
             // Search for neighboring agents
             params->model->doSafeMovement(currentAgent);    
         }
     }
+    params->model->agentCounter[params->idx] = agentsUpdated;
+    //std::cout << "thread id: " << params->idx << "\nupdated: " << agentsUpdated << "\n";
   }
 }
 
@@ -273,6 +323,7 @@ void Ped::Model::tick()
   switch(this->implementation) {
   case SEQ:
     { 
+      //calculateWorkLoad(length);
       for (std::vector<Ped::Tagent*>::iterator it = agents.begin(); it != agents.end(); ++it) {
 	  Ped::Tagent *agent = (*it);
 	  agent->whereToGo();
@@ -298,17 +349,15 @@ void Ped::Model::tick()
     }
   case PTHREAD:
     {
-      //std::cout << "tickMain!\n";
-      calculateWorkLoad(length);
       for(int i = 0; i < number_of_threads; i++) { // TODO: add lock for creating new threads (otherwise this check might break)
         agentCounter[i] = 0;
         sem_post(&(this->Params[i]->semaphore));
       }
 
-      /*
+      // behövs något för att stanna.
       for(int i = 0; i < number_of_threads; i++){
-	pthread_join(threads[i], NULL);
-	} */
+          pthread_join(threads[i], NULL);
+      } 
 
       break;
     }
