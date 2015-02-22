@@ -354,10 +354,12 @@ void Ped::Model::tick()
         sem_post(&(this->Params[i]->semaphore));
       }
 
-      // behövs något för att stanna.
+      // TODO: add something to make sure all threads have finished running before continuing
+      /*
       for(int i = 0; i < number_of_threads; i++){
           pthread_join(threads[i], NULL);
       } 
+      */
 
       break;
     }
