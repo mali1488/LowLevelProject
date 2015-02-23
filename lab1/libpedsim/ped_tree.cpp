@@ -15,6 +15,11 @@ using namespace std;
 
 pthread_mutexattr_t Attr;
 
+
+#define ZONE_CONSTANT = 8
+
+
+
 /// Description: set intial values
 /// \author  chgloor
 /// \date    2012-01-28
@@ -168,19 +173,26 @@ Ped::Ttree* Ped::Ttree::getChildByPosition(double xIn, double yIn) {
 /// \param   *a the agent to update
 void Ped::Ttree::moveAgent(const Ped::Tagent *a) {
   if ((a->getX() < x) || (a->getX() > (x+w)) || (a->getY() < y) || (a->getY() > (y+h))) {
-    while(__sync_val_compare_and_swap(&agents->agentCAS, false, true) == false) {
-      /* noop */
-    }
     agents->agentSet.erase(a);
     agents->agentCAS = false; // reset cas value
 
-    
-    while(__sync_val_compare_and_swap(&root->agents->agentCAS, false, true) == false) {
-      /* noop */
-    }
     root->addAgent(a);
     root->agents->agentCAS = false;
     
+  }
+}
+
+bool Ped::Ttree::moveAgent(Ped::Tagent *a, std::vector<Ped::Ttree*> *trees, std::pair<int,int> *pos) {
+    if ((pos->first < x) || (pos->first > (x+w)) || (pos->second < y) || (pos->second > (y+h))) {
+        for (std::vector<Ped::Ttree*>::iterator i = trees->begin(); i != trees->end(); ++i) {
+            if ((*i)->intersects(pos->first, pos->second, ZONE_CONSTANT)) {
+                agents->agentSet.erase(a);
+                root->addAgent(a);
+                root->agents->agentCAS = false;
+                return true;
+            }
+        }
+        return false;
   }
 }
 

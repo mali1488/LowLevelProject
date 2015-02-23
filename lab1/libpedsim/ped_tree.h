@@ -38,6 +38,7 @@ namespace Ped {
 
         virtual void addAgent(const Ped::Tagent *a);
         virtual void moveAgent(const Ped::Tagent *a);
+        virtual bool moveAgent(Ped::Tagent *a, std::vector<Ped::Ttree*> *tree, std::pair<int,int> *pos);
         virtual bool removeAgent(const Ped::Tagent *a);
 
         virtual set<const Ped::Tagent*> getAgents() const;

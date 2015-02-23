@@ -89,6 +89,7 @@ namespace Ped{
     void naiveBalance();
 
     int *agentCounter;
+    void setAgentCounter(int idx, int value);
 
     // Cleans up the tree and restructures it. Worth calling every now and then.
     void cleanup();
@@ -104,6 +105,7 @@ namespace Ped{
     struct parameters {
       Model* model;
       std::vector<Ped::Ttree*> *workLoad;
+      std::vector<Ped::Tagent*> *leavers;
       //Ped::Ttree *tree;
       sem_t semaphore;
       sem_t mainSem;
@@ -117,7 +119,7 @@ namespace Ped{
     /// THIS IS NEW
     ///////////////////////////////////////////////
     void doSafeMovement( Ped::Tagent *agent);
-    void doSafeMovementTest( Ped::Tagent *agent, int idx);
+    void doSafeMovementTest( Ped::Tagent *agent, std::vector<Ped::Tagent*> *leavers, std::vector<Ped::Ttree*> *trees);
     // The maximum quadtree depth
     static const int treeDepth = 10;    
 
