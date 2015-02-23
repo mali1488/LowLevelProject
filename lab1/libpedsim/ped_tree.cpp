@@ -315,3 +315,7 @@ bool Ped::Ttree::intersects(double px, double py, double pr) const {
   else
     return false;
 }
+
+void Ped::Ttree::toString(){
+  std::cout << "x :"<< x << ",y :" << y << ",h :"<< h << ", w:" << w << ", number agents: " << getAgents().size() << "\n";
+}
