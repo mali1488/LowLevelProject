@@ -90,6 +90,7 @@ namespace Ped{
     void naiveBalance();
 
     int *agentCounter;
+    void setAgentCounter(int idx, int value);
 
     // Cleans up the tree and restructures it. Worth calling every now and then.
     void cleanup();
@@ -106,6 +107,7 @@ namespace Ped{
       Model* model;
       std::vector<Ped::Ttree*> *workLoad;
       std::list<Ped::Tagent*> *seqList;
+
       //Ped::Ttree *tree;
       sem_t semaphore;
       sem_t mainSem;

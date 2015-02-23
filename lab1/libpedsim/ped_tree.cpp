@@ -15,6 +15,11 @@ using namespace std;
 
 pthread_mutexattr_t Attr;
 
+
+#define ZONE_CONSTANT = 8
+
+
+
 /// Description: set intial values
 /// \author  chgloor
 /// \date    2012-01-28

@@ -133,10 +133,12 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     tree->addAgent(*it);
   }
 
+  /*
   tree->tree1->toString();
   tree->tree2->toString();
   tree->tree3->toString();
   tree->tree4->toString();
+  */
 
   int length = agents.size();  
   if(choice == PTHREAD){
@@ -297,8 +299,7 @@ const std::vector<Ped::Tagent*> Ped::Model::getAgents() const
 
 void* Ped::Model::threaded_tick(void* parameters){
   struct parameters* params = (struct parameters*) parameters;
-  std::vector<Ped::Ttree*> *trees;
-  trees = (params->workLoad);
+  std::vector<Ped::Ttree*> *trees = params->workLoad;
 
   while(true) {
     sem_wait(&(params->semaphore));
@@ -315,9 +316,14 @@ void* Ped::Model::threaded_tick(void* parameters){
 	params->model->doSafeMovementThreaded(currentAgent, params->idx);    
       }
     }
-    params->model->agentCounter[params->idx] = agentsUpdated;
+    params->model->setAgentCounter(params->idx, agentsUpdated);
+    //params->model->agentCounter[params->idx] = agentsUpdated;
     sem_post(&(params->mainSem));
   }
+}
+
+void Ped::Model::setAgentCounter(int idx, int value) {
+    agentCounter[idx] = value;
 }
 
 void Ped::Model::tick()
@@ -658,7 +664,6 @@ void Ped::Model::getNeighbors(list<const Ped::Tagent*>& neighborList, int x, int
 	counter += 1;
 	treestack.push(t->tree4);
       }
-      //std::cout << "counter: " << counter << "\n";
     }
   }
 }
