@@ -104,13 +104,14 @@ namespace Ped{
     struct parameters {
       Model* model;
       std::vector<Ped::Ttree*> *workLoad;
+      Ped::Ttree *tree;
       sem_t semaphore;
       sem_t mainSem;
-      sem_t testSem;
       int idx;
     };
     struct parameters** Params;
 
+    sem_t testSem;
     
     ////////////
     /// THIS IS NEW

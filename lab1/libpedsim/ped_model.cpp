@@ -125,7 +125,7 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
   treehash = new std::map<const Ped::Tagent*, Ped::Ttree*>();
  
   // Create a new quadtree containing all agents
-  tree = new Ttree(NULL,treehash, 0, treeDepth, 0, 0, 800, 600); //TODO: dimension?
+  tree = new Ttree(NULL,treehash, 0, treeDepth, 0, 0, 200, 150); //TODO: dimension?
 
   for (std::vector<Ped::Tagent*>::iterator it = agents.begin(); it != agents.end(); ++it){
     tree->addAgent(*it);
@@ -146,16 +146,24 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
         this->Params[i]->idx = i;
         sem_init(&(this->Params[i]->semaphore), 1, 0);
 	sem_init(&(this->Params[i]->mainSem), 1, 1);
-	sem_init(&(this->Params[i]->testSem), 1, 1);
+	sem_init(&(this->testSem), 1, 1);
         if(pthread_create(&threads[i],NULL,&(threaded_tick),(void*)this->Params[i])) {
             perror("Could not create thread!");
             exit(1);
         }
     }
+    /*
     this->Params[0]->workLoad->push_back(tree->tree1);
     this->Params[1]->workLoad->push_back(tree->tree2);
     this->Params[2]->workLoad->push_back(tree->tree3);
-    this->Params[3]->workLoad->push_back(tree->tree4);
+    this->Params[3]->workLoad->push_back(tree->tree4); */
+
+    this->Params[0]->tree = tree->tree1;
+    this->Params[1]->tree = tree->tree2;
+    this->Params[2]->tree = tree->tree3;
+    this->Params[3]->tree = tree->tree4;
+
+    //std::cout << "this->Params[0]->workLoad.size(): " << (*this->Params[0]->workLoad).size() << "\n";
 
   }
   if(choice == VECTOR || choice == TEST || choice == OPENCL) {
@@ -282,24 +290,27 @@ void* Ped::Model::threaded_tick(void* parameters){
   struct parameters* params = (struct parameters*) parameters;
   std::vector<Ped::Ttree*> *trees;
   trees = (params->workLoad);
-  
+
   while(true) {
     sem_wait(&(params->semaphore));
+    
+    
     //std::cout << "thread id: " << params->idx << "\nworkload size: " << trees->size() << "\n";
     int agentsUpdated = 0;    
-    for (std::vector<Ped::Ttree*>::iterator i = trees->begin(); i != trees->end(); ++i) {
-        std::set<const Ped::Tagent*> agents = (*i)->getAgents();
+    //for (std::vector<Ped::Ttree*>::iterator i = trees->begin(); i != trees->end(); ++i) {
+        std::set<const Ped::Tagent*> agents = params->tree->getAgents();
         agentsUpdated += agents.size();
         for (std::set<const Ped::Tagent*>::iterator it = agents.begin(); it != agents.end(); ++it) {
+	  //std::cout << "--XYZ---idx " << params->idx << " executing!\n";
             Ped::Tagent* currentAgent = const_cast<Ped::Tagent*>(*it);
             currentAgent->whereToGo();
             currentAgent->go();                 // This rather becomes a "computeNextDesiredPosition"
             // Search for neighboring agents
-	    sem_wait(&params->testSem);
+	    sem_wait(&params->model->testSem);
             params->model->doSafeMovement(currentAgent);    
-	    sem_post(&params->testSem);
+	    sem_post(&params->model->testSem);
         }
-    }
+	//}
     params->model->agentCounter[params->idx] = agentsUpdated;
     sem_post(&(params->mainSem));
     //std::cout << "thread id: " << params->idx << "\nupdated: " << agentsUpdated << "\n";
@@ -479,9 +490,9 @@ void Ped::Model::tick()
 void  Ped::Model::doSafeMovementTest( Ped::Tagent *agent, int idx)
 {
   // Search for neighboring agents
-  sem_wait(&(Params[idx]->testSem));
+  sem_wait(&(Params[idx]->model->testSem));
   set<const Ped::Tagent *> neighbors = getNeighbors(agent->getX(), agent->getY(), 2);
-  sem_post(&(Params[idx]->testSem));
+  sem_post(&(Params[idx]->model->testSem));
     
   // Retrieve their positions
   std::vector<std::pair<int, int> > takenPositions;
