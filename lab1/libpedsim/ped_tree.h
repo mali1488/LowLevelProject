@@ -52,6 +52,8 @@ namespace Ped {
 
         int getdepth() const { return depth; };
 
+	void toString();
+	
         typedef struct lockedAgents {
 	  pthread_mutex_t lock; // = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 	  bool agentCAS;
