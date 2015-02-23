@@ -104,7 +104,7 @@ namespace Ped{
     struct parameters {
       Model* model;
       std::vector<Ped::Ttree*> *workLoad;
-      Ped::Ttree *tree;
+      //Ped::Ttree *tree;
       sem_t semaphore;
       sem_t mainSem;
       int idx;
