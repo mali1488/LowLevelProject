@@ -103,8 +103,10 @@ namespace Ped{
     
     struct parameters {
       Model* model;
-      std::vector<Ped::Ttree*> workLoad;
+      std::vector<Ped::Ttree*> *workLoad;
       sem_t semaphore;
+      sem_t mainSem;
+      sem_t testSem;
       int idx;
     };
     struct parameters** Params;
@@ -114,6 +116,7 @@ namespace Ped{
     /// THIS IS NEW
     ///////////////////////////////////////////////
     void doSafeMovement( Ped::Tagent *agent);
+    void doSafeMovementTest( Ped::Tagent *agent, int idx);
     // The maximum quadtree depth
     static const int treeDepth = 10;    
 

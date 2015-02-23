@@ -53,8 +53,9 @@ namespace Ped {
         int getdepth() const { return depth; };
 
         typedef struct lockedAgents {
-            pthread_mutex_t lock; // = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
-            set<const Ped::Tagent*> agentSet;
+	  pthread_mutex_t lock; // = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
+	  bool agentCAS;
+	  set<const Ped::Tagent*> agentSet;
         } *LockedAgents;
 
     protected:
@@ -80,7 +81,6 @@ namespace Ped {
         Ttree *tree3;
         Ttree *tree4;
 	Ttree *root;
-
     };
 }
 
