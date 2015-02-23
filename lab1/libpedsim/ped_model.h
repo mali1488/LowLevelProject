@@ -20,6 +20,7 @@
 namespace Ped{
   class Tagent;
   class Ttree;
+  
   enum IMPLEMENTATION {CUDA, VECTOR, OMP, PTHREAD, SEQ, TEST,OPENCL};
   
 
@@ -100,10 +101,11 @@ namespace Ped{
     IMPLEMENTATION implementation;
     std::vector<Tagent*> agents;
     int number_of_threads;
-    
+
     struct parameters {
       Model* model;
       std::vector<Ped::Ttree*> *workLoad;
+      std::list<Ped::Tagent*> *seqList;
       //Ped::Ttree *tree;
       sem_t semaphore;
       sem_t mainSem;
@@ -117,7 +119,7 @@ namespace Ped{
     /// THIS IS NEW
     ///////////////////////////////////////////////
     void doSafeMovement( Ped::Tagent *agent);
-    void doSafeMovementTest( Ped::Tagent *agent, int idx);
+    void doSafeMovementThreaded( Ped::Tagent *agent, int idx);
     // The maximum quadtree depth
     static const int treeDepth = 10;    
 
@@ -138,6 +140,8 @@ namespace Ped{
     /// END NEW
     ///////////////////////////////////////////////
   };
+  
+  
 
 }
 #endif

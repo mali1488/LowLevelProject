@@ -19,6 +19,8 @@
 #include "ped_model.h"
 #include "ped_agent.h"
 
+#include <semaphore.h>
+
 using namespace std;
 
 
@@ -30,7 +32,17 @@ namespace Ped {
       friend class Ped::Model;
 
     public:
+      typedef struct parameters {
+	Model* model;
+	std::vector<Ped::Ttree*> *workLoad;
+	//Ped::Ttree *tree;
+	sem_t semaphore;
+	sem_t mainSem;
+	int idx;
+      } *ThreadParams;
+
       Ttree(Ped::Ttree *root,std::map<const Ped::Tagent*, Ped::Ttree*> *treehash, int depth, int maxDepth, double x, double y, double w, double h);
+      Ttree(Ped::Ttree *root,std::map<const Ped::Tagent*, Ped::Ttree*> *treehash, int depth, int maxDepth, double x, double y, double w, double h, std::map<const Ped::Ttree*, ThreadParams> *threadhash);
         virtual ~Ttree();
 
         virtual void clear();
@@ -54,6 +66,9 @@ namespace Ped {
 
 	void toString();
 	
+	bool moveCheck(const Ped::Tagent *a, int x, int y);
+	bool dangerControl(const Ped::Tagent *a, int dist);
+
         typedef struct lockedAgents {
 	  pthread_mutex_t lock; // = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 	  bool agentCAS;
@@ -66,6 +81,7 @@ namespace Ped {
 	int cut();
     protected:
 	std::map<const Ped::Tagent*, Ped::Ttree*> *treehash;
+	std::map<const Ped::Ttree*, ThreadParams> *threadhash;
         //set<const Ped::Tagent*> agents;	// set and not vector, since we need to delete elements from the middle very often
                                         // set and not list, since deletion is based on pointer (search O(log n) instead of O(n)).
         LockedAgents agents;

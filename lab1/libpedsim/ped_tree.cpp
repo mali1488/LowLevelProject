@@ -22,6 +22,35 @@ Ped::Ttree::Ttree(Ped::Ttree *root,std::map<const Ped::Tagent*, Ped::Ttree*> *tr
   // more initializations here. not really necessary to put them into the initializator list, too.
   this->root = root != NULL ? root: this;
   this->treehash = treehash;
+  this->threadhash = NULL;
+  // this should be moved somewhere else
+  pthread_mutexattr_init(&Attr);
+  pthread_mutexattr_settype(&Attr, PTHREAD_MUTEX_RECURSIVE);
+  isleaf = true;
+  this->agents = new struct lockedAgents;
+  this->agents->agentCAS = false;
+  pthread_mutex_init(&(this->agents->lock), &Attr);    
+
+  x = px;
+  y = py;
+  w = pw;
+  h = ph;
+  depth = pdepth;
+  maxDepth = pmaxDepth;
+  tree1 = NULL;
+  tree2 = NULL;
+  tree3 = NULL;
+  tree4 = NULL;
+};
+
+/// Description: set intial values
+/// \author  chgloor
+/// \date    2012-01-28
+Ped::Ttree::Ttree(Ped::Ttree *root,std::map<const Ped::Tagent*, Ped::Ttree*> *treehash, int pdepth, int pmaxDepth, double px, double py, double pw, double ph, std::map<const Ped::Ttree*, ThreadParams> *threadhash) {
+  // more initializations here. not really necessary to put them into the initializator list, too.
+  this->root = root != NULL ? root: this;
+  this->treehash = treehash;
+  this->threadhash = threadhash;
   // this should be moved somewhere else
   pthread_mutexattr_init(&Attr);
   pthread_mutexattr_settype(&Attr, PTHREAD_MUTEX_RECURSIVE);
@@ -53,12 +82,7 @@ Ped::Ttree::~Ttree() {
 
 void Ped::Ttree::clear() {
   if(isleaf) {
-    while(__sync_bool_compare_and_swap(&agents->agentCAS, false, true) == false) {
-      /* noop */
-      
-    }
     agents->agentSet.clear();
-    agents->agentCAS = false;
   }
   else {
     tree1->clear();
@@ -84,13 +108,9 @@ bool cmp(const Ped::Tagent *a, const Ped::Tagent *b) {
 /// \param   *a The agent to add
 void Ped::Ttree::addAgent(const Ped::Tagent *a) {
   if (isleaf) {
-    while(__sync_val_compare_and_swap(&agents->agentCAS, false, true) == false) {
-      /* noop */
-    }
     agents->agentSet.insert(a);
     //model->setResponsibleTree(this, a);
     (*treehash)[a] = this;
-    agents->agentCAS = false; // reset cas value
   }
   else {
     if ((a->getX() >= x+w/2) && (a->getY() >= y+h/2)){
@@ -105,10 +125,6 @@ void Ped::Ttree::addAgent(const Ped::Tagent *a) {
       else if ((a->getX() <= x+w/2) && (a->getY() >= y+h/2)) {
 	tree4->addAgent(a); // 4
       }
-  }
-
-  while(__sync_val_compare_and_swap(&agents->agentCAS, false, true) == false) {
-    /* noop */
   }
 
   if (agents->agentSet.size() > 8 && depth < maxDepth) {
@@ -131,7 +147,6 @@ void Ped::Ttree::addAgent(const Ped::Tagent *a) {
       agents->agentSet.erase(a);
     }
   }
-  agents->agentCAS = false; // reset cas value
 }
 
 
@@ -139,10 +154,17 @@ void Ped::Ttree::addAgent(const Ped::Tagent *a) {
 /// \author  chgloor
 /// \date    2012-01-28
 void Ped::Ttree::addChildren() {
-  tree1 = new Ped::Ttree(root,treehash, depth+1, maxDepth,  x, y, w/2, h/2);
-  tree2 = new Ped::Ttree(root,treehash, depth+1, maxDepth,  x+w/2, y, w/2, h/2);
-  tree3 = new Ped::Ttree(root,treehash, depth+1, maxDepth,  x+w/2, y+h/2, w/2, h/2);
-  tree4 = new Ped::Ttree(root,treehash, depth+1, maxDepth,  x, y+h/2, w/2, h/2);
+  if(!threadhash) {
+    tree1 = new Ped::Ttree(root,treehash, depth+1, maxDepth,  x, y, w/2, h/2);
+    tree2 = new Ped::Ttree(root,treehash, depth+1, maxDepth,  x+w/2, y, w/2, h/2);
+    tree3 = new Ped::Ttree(root,treehash, depth+1, maxDepth,  x+w/2, y+h/2, w/2, h/2);
+    tree4 = new Ped::Ttree(root,treehash, depth+1, maxDepth,  x, y+h/2, w/2, h/2);
+  } else {
+    tree1 = new Ped::Ttree(root,treehash, depth+1, maxDepth,  x, y, w/2, h/2, threadhash);
+    tree2 = new Ped::Ttree(root,treehash, depth+1, maxDepth,  x+w/2, y, w/2, h/2, threadhash);
+    tree3 = new Ped::Ttree(root,treehash, depth+1, maxDepth,  x+w/2, y+h/2, w/2, h/2, threadhash);
+    tree4 = new Ped::Ttree(root,treehash, depth+1, maxDepth,  x, y+h/2, w/2, h/2, threadhash);
+  }
 }
 
 
@@ -168,32 +190,30 @@ Ped::Ttree* Ped::Ttree::getChildByPosition(double xIn, double yIn) {
 /// \param   *a the agent to update
 void Ped::Ttree::moveAgent(const Ped::Tagent *a) {
   if ((a->getX() < x) || (a->getX() > (x+w)) || (a->getY() < y) || (a->getY() > (y+h))) {
-    while(__sync_val_compare_and_swap(&agents->agentCAS, false, true) == false) {
-      /* noop */
-    }
-    agents->agentSet.erase(a);
-    agents->agentCAS = false; // reset cas value
-
-    
-    while(__sync_val_compare_and_swap(&root->agents->agentCAS, false, true) == false) {
-      /* noop */
-    }
+    agents->agentSet.erase(a);    
     root->addAgent(a);
-    root->agents->agentCAS = false;
-    
   }
 }
 
+bool Ped::Ttree::moveCheck(const Ped::Tagent *a, int inputX, int inputY) {
+  if ((inputX < x) || (inputX > (x+w)) || (inputY < y) || (inputY > (y+h))) {
+    return false;
+  } else {
+    return true;
+  }
+}
+
+bool Ped::Ttree::dangerControl(const Ped::Tagent *a, int dist) {
+  if ((a->getY() - dist < x) || (a->getX() + dist > (x+w)) || (a->getY() - dist < y) || (a->getY() + dist > (y+h))) {
+    return true;
+  } else {
+    return false;
+  }
+}
 
 bool Ped::Ttree::removeAgent(const Ped::Tagent *a) {
   if(isleaf) {
-    while(__sync_val_compare_and_swap(&agents->agentCAS, false, true) == false) {
-      /* noop */
-    }
-      
     size_t removedCount = agents->agentSet.erase(a);
-      
-    agents->agentCAS = false; // reset cas value
     return (removedCount > 0);
   }
   else {
@@ -208,14 +228,10 @@ bool Ped::Ttree::removeAgent(const Ped::Tagent *a) {
 /// \date    2012-01-28
 /// \return  the number of agents in this and all child nodes.
 int Ped::Ttree::cut() {
-  if (isleaf)
-    while(__sync_val_compare_and_swap(&agents->agentCAS, false, true) == false) {
-      /* noop */
-    }
+  if (isleaf) {
   int size = agents->agentSet.size();
-  agents->agentCAS = false; // reset cas value
-    
   return size;
+  }
 	
   int count = 0;
   count += tree1->cut();
@@ -227,14 +243,12 @@ int Ped::Ttree::cut() {
     assert(tree2->isleaf == true);
     assert(tree3->isleaf == true);
     assert(tree4->isleaf == true);
-    while(__sync_val_compare_and_swap(&agents->agentCAS, false, true) == false) {
-      /* noop */
-    }
+
     agents->agentSet.insert(tree1->agents->agentSet.begin(), tree1->agents->agentSet.end());
     agents->agentSet.insert(tree2->agents->agentSet.begin(), tree2->agents->agentSet.end());
     agents->agentSet.insert(tree3->agents->agentSet.begin(), tree3->agents->agentSet.end());
     agents->agentSet.insert(tree4->agents->agentSet.begin(), tree4->agents->agentSet.end());
-    isleaf = true;
+
     for (set<const Ped::Tagent*>::iterator it = agents->agentSet.begin(); it != agents->agentSet.end(); ++it) {
       const Tagent *a = (*it);
       (*treehash)[a] = this;
@@ -243,7 +257,6 @@ int Ped::Ttree::cut() {
     delete tree2;
     delete tree3;
     delete tree4;
-    agents->agentCAS = false; // reset cas value
   }
   return count;
 }
@@ -282,10 +295,6 @@ set<const Ped::Tagent*> Ped::Ttree::getAgents() const {
 }
 
 void Ped::Ttree::getAgents(list<const Ped::Tagent*>& outputList) const {
-  while(__sync_val_compare_and_swap(&agents->agentCAS, false, true) == false) {
-    /* noop */
-  }
-   
   if(isleaf) {
     for (set<const Ped::Tagent*>::iterator it = agents->agentSet.begin(); it != agents->agentSet.end(); ++it) {
       const Ped::Tagent* currentAgent = (*it);
@@ -298,7 +307,6 @@ void Ped::Ttree::getAgents(list<const Ped::Tagent*>& outputList) const {
     tree3->getAgents(outputList);
     tree4->getAgents(outputList);
   }
-  agents->agentCAS = false;
 }
 
 
@@ -309,13 +317,23 @@ void Ped::Ttree::getAgents(list<const Ped::Tagent*>& outputList) const {
 /// \param   px The x co-ordinate of the point
 /// \param   py The y co-ordinate of the point
 /// \param   pr The radius
+// ORIGINAL VERSION:
 bool Ped::Ttree::intersects(double px, double py, double pr) const {
   if (((px+pr) >= x) && ((px-pr) <= (x+w)) && ((py+pr) >= y) && ((py-pr) <= (y+h)))
     return true; // x+-r/y+-r is inside
   else
     return false;
-}
+    } 
+
+// Experimental version:
+/*
+bool Ped::Ttree::intersects(double px, double py, double pr) const {
+  if (((px-pr) >= x) && ((px+pr) <= (x+w)) && ((py-pr) >= y) && ((py+pr) <= (y+h)))
+    return true; // x+-r/y+-r is inside
+  else
+    return false;
+    } */
 
 void Ped::Ttree::toString(){
-  std::cout << "x :"<< x << ",y :" << y << ",h :"<< h << ", w:" << w << ", number agents: " << getAgents().size() << "\n";
+  std::cout << "x :"<< x << ",y :" << y << ",h :"<< h << ", w:" << w << ", number agents: " << getAgents().size() << ", depth:" << depth << "\n";
 }
