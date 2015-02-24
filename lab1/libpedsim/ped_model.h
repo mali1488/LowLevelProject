@@ -9,17 +9,20 @@
 
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>
+#include <dispatch/dispatch.h>
 #else
 #include <CL/cl.h>
+#include <semaphore.h>
 #endif
 
 #include <set>
 #include <pthread.h>
-#include <semaphore.h>
+
 
 namespace Ped{
   class Tagent;
   class Ttree;
+  
   enum IMPLEMENTATION {CUDA, VECTOR, OMP, PTHREAD, SEQ, TEST,OPENCL};
   
 
@@ -101,19 +104,29 @@ namespace Ped{
     IMPLEMENTATION implementation;
     std::vector<Tagent*> agents;
     int number_of_threads;
-    
+
     struct parameters {
       Model* model;
       std::vector<Ped::Ttree*> *workLoad;
       std::list<Ped::Tagent*> *leavers;
       //Ped::Ttree *tree;
-      sem_t semaphore;
-      sem_t mainSem;
+      #ifdef __APPLE__
+         dispatch_semaphore_t semaphore;
+         dispatch_semaphore_t mainSem;
+      #else
+         sem_t semaphore;
+         sem_t mainSem;
+      #endif
       int idx;
     };
     struct parameters** Params;
 
-    sem_t testSem;
+    #ifdef __APPLE__
+       dispatch_semaphore_t testSem;
+    #else
+       sem_t testSem;
+    #endif
+
     
     ////////////
     /// THIS IS NEW
@@ -140,6 +153,8 @@ namespace Ped{
     /// END NEW
     ///////////////////////////////////////////////
   };
+  
+  
 
 }
 #endif

@@ -19,6 +19,8 @@
 #include "ped_model.h"
 #include "ped_agent.h"
 
+#include <semaphore.h>
+
 using namespace std;
 
 
@@ -31,6 +33,7 @@ namespace Ped {
 
     public:
       Ttree(Ped::Ttree *root,std::map<const Ped::Tagent*, Ped::Ttree*> *treehash, int depth, int maxDepth, double x, double y, double w, double h, short owner);
+
       Ttree(Ped::Ttree *root,std::map<const Ped::Tagent*, Ped::Ttree*> *treehash, int depth, int maxDepth, double x, double y, double w, double h);
         virtual ~Ttree();
         short owner;
@@ -58,6 +61,9 @@ namespace Ped {
 
 	void toString();
 	
+	bool moveCheck(const Ped::Tagent *a, int x, int y);
+	bool dangerControl(const Ped::Tagent *a, int dist);
+
         typedef struct lockedAgents {
 	  pthread_mutex_t lock; // = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 	  bool agentCAS;
