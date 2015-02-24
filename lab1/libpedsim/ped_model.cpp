@@ -42,7 +42,6 @@ bool cmp(Ped::Tagent *a, Ped::Tagent *b) {
 }
 
 void Ped::Model::calculateWorkLoad(int amountAgents) {
-    // TODO: rounds down - problem?
     int avg = amountAgents / (this->number_of_threads);
     std::cout << "avg: " << avg << "\n";
     std::vector<Ped::Ttree*> *leaves = new vector<Ped::Ttree*>;
@@ -57,7 +56,6 @@ void Ped::Model::calculateWorkLoad(int amountAgents) {
             thread++;
         }
         Params[thread % number_of_threads]->workLoad->push_back(*it);
-        // TODO: checking size without checking lock???
         agentCounter[thread % number_of_threads] += (*it)->agents->agentSet.size();
     }
     std::cout << "leaf size: " << leafCounter << "\n";
@@ -137,7 +135,7 @@ void Ped::Model::naiveBalance() {
                 idx = i;
             }
         }
-        if (!heaviest_tree->isleaf) {
+        if (!heaviest_tree->isleaf && heaviest_tree->depth <= 2) {
             Params[min_idx]->workLoad->push_back(heaviest_tree->tree1);
             Params[min_idx]->workLoad->push_back(heaviest_tree->tree2);
             Params[max_idx]->workLoad->erase(Params[max_idx]->workLoad->begin() + idx);
@@ -409,7 +407,7 @@ void Ped::Model::tick()
   case PTHREAD:
     {
 
-      for(int i = 0; i < number_of_threads; i++) { // TODO: add lock for creating new threads (otherwise this check might break)
+      for(int i = 0; i < number_of_threads; i++) { 
 	    sem_wait(&(this->Params[i]->mainSem));
       }
       for(int i = 0; i < number_of_threads; i++) {
@@ -419,19 +417,15 @@ void Ped::Model::tick()
               Params[i]->leavers->pop_front();
           }
       }
+    std::cout << "t0 agents: " << agentCounter[0] << "\n";
+    std::cout << "t1 agents: " << agentCounter[1] << "\n";
+    std::cout << "t2 agents: " << agentCounter[2] << "\n";
+    std::cout << "t3 agents: " << agentCounter[3] << "\n";
 
-      //naiveBalance();
-      for(int i = 0; i < number_of_threads; i++) { // TODO: add lock for creating new threads (otherwise this check might break)
-            //std::cout << "thread id: " << this->Params[i]->idx << " agents: " << this->agentCounter[i] << "\n";
+      naiveBalance();
+      for(int i = 0; i < number_of_threads; i++) {
         sem_post(&(this->Params[i]->semaphore));
       }
-
-      // TODO: add something to make sure all threads have finished running before continuing
-      /*
-      for(int i = 0; i < number_of_threads; i++){
-          pthread_join(threads[i], NULL);
-      } 
-      */
 
       break;
     }
