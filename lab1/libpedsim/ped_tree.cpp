@@ -15,8 +15,7 @@ using namespace std;
 
 pthread_mutexattr_t Attr;
 
-
-#define ZONE_CONSTANT = 8
+#define ZONE_CONSTANT 10
 
 
 
@@ -27,6 +26,31 @@ Ped::Ttree::Ttree(Ped::Ttree *root,std::map<const Ped::Tagent*, Ped::Ttree*> *tr
   // more initializations here. not really necessary to put them into the initializator list, too.
   this->root = root != NULL ? root: this;
   this->treehash = treehash;
+  // this should be moved somewhere else
+  pthread_mutexattr_init(&Attr);
+  pthread_mutexattr_settype(&Attr, PTHREAD_MUTEX_RECURSIVE);
+  isleaf = true;
+  this->agents = new struct lockedAgents;
+  this->agents->agentCAS = false;
+  pthread_mutex_init(&(this->agents->lock), &Attr);    
+
+  x = px;
+  y = py;
+  w = pw;
+  h = ph;
+  depth = pdepth;
+  maxDepth = pmaxDepth;
+  tree1 = NULL;
+  tree2 = NULL;
+  tree3 = NULL;
+  tree4 = NULL;
+};
+
+Ped::Ttree::Ttree(Ped::Ttree *root,std::map<const Ped::Tagent*, Ped::Ttree*> *treehash, int pdepth, int pmaxDepth, double px, double py, double pw, double ph, short owner) {
+  // more initializations here. not really necessary to put them into the initializator list, too.
+  this->root = root != NULL ? root: this;
+  this->treehash = treehash;
+  this->owner = owner;
   // this should be moved somewhere else
   pthread_mutexattr_init(&Attr);
   pthread_mutexattr_settype(&Attr, PTHREAD_MUTEX_RECURSIVE);
@@ -182,18 +206,36 @@ void Ped::Ttree::moveAgent(const Ped::Tagent *a) {
   }
 }
 
+std::vector<Ped::Ttree*> Ped::Ttree::getNeighbor() {
+    std::vector<Ped::Ttree*> ret;
+    int pos;
+    //Ped::Ttree* max;
+    if(root->tree1 == this) pos = 1;
+    if(root->tree2 == this) pos = 2;
+    if(root->tree3 == this) pos = 3;
+    if(root->tree4 == this) pos = 4;
+    if (pos == 1 || pos == 4) {
+        ret.push_back(root->tree2);
+        ret.push_back(root->tree3);
+        //max = root->tree2->getAgents().size() > root->tree3->getAgents().size() ? root->tree2 : root->tree3;
+    } else {
+        ret.push_back(root->tree1);
+        ret.push_back(root->tree4);
+        //max = root->tree1->getAgents().size() > root->tree4->getAgents().size() ? root->tree1 : root->tree4;
+    }
+    return ret;
+}
+
 bool Ped::Ttree::moveAgent(Ped::Tagent *a, std::vector<Ped::Ttree*> *trees, std::pair<int,int> *pos) {
-    if ((pos->first < x) || (pos->first > (x+w)) || (pos->second < y) || (pos->second > (y+h))) {
-        for (std::vector<Ped::Ttree*>::iterator i = trees->begin(); i != trees->end(); ++i) {
-            if ((*i)->intersects(pos->first, pos->second, ZONE_CONSTANT)) {
-                agents->agentSet.erase(a);
-                root->addAgent(a);
-                root->agents->agentCAS = false;
-                return true;
-            }
+    int r = 1;
+    for (std::vector<Ped::Ttree*>::iterator i = trees->begin(); i != trees->end(); ++i) {
+        Ped::Ttree *t = (*i);
+        if (((t->x + t->w) >= (pos->first+r)) && ((t->x) <= pos->first) && ((t->y + t->h) >= (pos->second + r)) && ((t->y) <= (pos->second - r))) {
+            //std::cout << "TRUE!\n";
+            return true;
         }
-        return false;
-  }
+    }
+    return false;
 }
 
 

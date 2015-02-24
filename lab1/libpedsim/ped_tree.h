@@ -30,8 +30,10 @@ namespace Ped {
       friend class Ped::Model;
 
     public:
+      Ttree(Ped::Ttree *root,std::map<const Ped::Tagent*, Ped::Ttree*> *treehash, int depth, int maxDepth, double x, double y, double w, double h, short owner);
       Ttree(Ped::Ttree *root,std::map<const Ped::Tagent*, Ped::Ttree*> *treehash, int depth, int maxDepth, double x, double y, double w, double h);
         virtual ~Ttree();
+        short owner;
 
         virtual void clear();
         void getLeaves(std::vector<Ped::Ttree*> *ta);
@@ -40,6 +42,7 @@ namespace Ped {
         virtual void moveAgent(const Ped::Tagent *a);
         virtual bool moveAgent(Ped::Tagent *a, std::vector<Ped::Ttree*> *tree, std::pair<int,int> *pos);
         virtual bool removeAgent(const Ped::Tagent *a);
+        std::vector<Ped::Ttree*> getNeighbor();
 
         virtual set<const Ped::Tagent*> getAgents() const;
         virtual void getAgents(list<const Ped::Tagent*>& outputList) const;
