@@ -465,7 +465,7 @@ void Ped::Model::tick()
         agentCounter[i] = 0;
       }
       for(int i = 0; i < number_of_threads; i++) {
-          std::cout << "thread id: " << i << " size: " << this->Params[i]->leavers->size() << "\n";
+	//std::cout << "thread id: " << i << " size: " << this->Params[i]->leavers->size() << "\n";
           while(!(Params[i]->leavers->empty())) {
               doSafeMovement(Params[i]->leavers->front());
               Params[i]->leavers->pop_front();
@@ -473,10 +473,7 @@ void Ped::Model::tick()
       }
 
       //naiveBalance();
-      for(int i = 0; i < number_of_threads; i++) { // TODO: add lock for creating new threads (otherwise this check might break)
-            //std::cout << "thread id: " << this->Params[i]->idx << " agents: " << this->agentCounter[i] << "\n";
-        sem_post(&(this->Params[i]->semaphore));
-      }
+     
 
       naiveBalance();
 
