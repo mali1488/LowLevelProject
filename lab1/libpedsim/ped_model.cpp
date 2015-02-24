@@ -14,16 +14,15 @@
 
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>
+#include <dispatch/dispatch.h>
 #else
 #include <CL/cl.h>
+#include <semaphore.h>
 #endif
 
 #include <stack>
 #include <algorithm>
-
 #include <unistd.h>
-#include <semaphore.h>
-
 #include <list>
 
 #define MAX_SOURCE_SIZE (0x100000)
@@ -32,8 +31,11 @@
 
 struct parameters;
 
+#ifdef __APPLE__
+dispatch_semaphore_t tickSem;
+#else
 sem_t tickSem;
-
+#endif
 
 bool bounce = true;
 
@@ -108,9 +110,13 @@ void Ped::Model::naiveBalance() {
 }
 
 void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION choice, int numThreads) {
-  sem_init(&tickSem, 1, 0);
+  #ifdef __APPLE__
+     tickSem = dispatch_semaphore_create(0);
+  #else
+     sem_init(&tickSem, 1, 0);
+  #endif
   total_opencl_time = 0;
-  
+
   /*
     agents = agentsInScenario;
     std::vector<Tagent*> agents = Ped::Model::getAgents();  */
@@ -146,8 +152,13 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
    
     this->agentCounter = new int[number_of_threads];
     pthread_t threads[number_of_threads];
-    sem_init(&(this->testSem), 1, 1);
 
+    #ifdef __APPLE__
+    testSem = dispatch_semaphore_create(1);
+    #else
+    sem_init(&(this->testSem), 1, 1);
+    #endif
+    
     for (int i = 0; i < number_of_threads; i++) {
       this->Params[i] = new struct parameters();
       this->Params[i]->workLoad = new vector<Ped::Ttree*>;
@@ -155,8 +166,15 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
       this->Params[i]->model = this;
       this->agentCounter[i] = 0;
       this->Params[i]->idx = i;
+
+      #ifdef __APPLE__
+      ((this->Params[i])->semaphore) = dispatch_semaphore_create(0);
+      ((this->Params[i])->mainSem) = dispatch_semaphore_create(1);
+      #else
       sem_init(&(this->Params[i]->semaphore), 1, 0);
       sem_init(&(this->Params[i]->mainSem), 1, 1);
+      #endif
+      
       if(pthread_create(&threads[i],NULL,&(threaded_tick),(void*)this->Params[i])) {
 	perror("Could not create thread!");
 	exit(1);
@@ -302,7 +320,12 @@ void* Ped::Model::threaded_tick(void* parameters){
   std::vector<Ped::Ttree*> *trees = params->workLoad;
 
   while(true) {
+    #ifdef __APPLE__
+    dispatch_semaphore_wait((params->semaphore), DISPATCH_TIME_FOREVER);
+    #else
     sem_wait(&(params->semaphore));
+    #endif
+
     int agentsUpdated = 0;    
     for (std::vector<Ped::Ttree*>::iterator i = trees->begin(); i != trees->end(); ++i) {
       std::set<const Ped::Tagent*> agents = (*i)->getAgents();
@@ -318,7 +341,11 @@ void* Ped::Model::threaded_tick(void* parameters){
     }
     params->model->setAgentCounter(params->idx, agentsUpdated);
     //params->model->agentCounter[params->idx] = agentsUpdated;
-    sem_post(&(params->mainSem));
+    #ifdef __APPLE__
+       dispatch_semaphore_signal((params->mainSem));
+    #else
+       sem_post(&(params->mainSem));
+    #endif
   }
 }
 
@@ -362,7 +389,13 @@ void Ped::Model::tick()
   case PTHREAD:
     {
       for(int i = 0; i < number_of_threads; i++) { // TODO: add lock for creating new threads (otherwise this check might break)
-	sem_wait(&(this->Params[i]->mainSem));
+
+        #ifdef __APPLE__
+	   dispatch_semaphore_wait((this->Params[i]->mainSem), DISPATCH_TIME_FOREVER);
+	#else
+ 	   sem_wait(&(this->Params[i]->mainSem));
+	#endif
+	
         agentCounter[i] = 0;
 	std::cout << "seqList.length(): " << Params[i]->seqList->size() << "\n";
       }
@@ -377,7 +410,11 @@ void Ped::Model::tick()
       naiveBalance();
 
       for(int i = 0; i < number_of_threads; i++) { // Let threads execute tick
-	sem_post(&(this->Params[i]->semaphore));
+	#ifdef __APPLE__
+ 	   dispatch_semaphore_signal((this->Params[i]->semaphore));
+	#else
+           sem_post(&(this->Params[i]->semaphore));
+	#endif
       }
 
       break;

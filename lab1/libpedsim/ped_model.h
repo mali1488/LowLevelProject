@@ -9,13 +9,15 @@
 
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>
+#include <dispatch/dispatch.h>
 #else
 #include <CL/cl.h>
+#include <semaphore.h>
 #endif
 
 #include <set>
 #include <pthread.h>
-#include <semaphore.h>
+
 
 namespace Ped{
   class Tagent;
@@ -109,13 +111,23 @@ namespace Ped{
       std::list<Ped::Tagent*> *seqList;
 
       //Ped::Ttree *tree;
-      sem_t semaphore;
-      sem_t mainSem;
+      #ifdef __APPLE__
+         dispatch_semaphore_t semaphore;
+         dispatch_semaphore_t mainSem;
+      #else
+         sem_t semaphore;
+         sem_t mainSem;
+      #endif
       int idx;
     };
     struct parameters** Params;
 
-    sem_t testSem;
+    #ifdef __APPLE__
+       dispatch_semaphore_t testSem;
+    #else
+       sem_t testSem;
+    #endif
+
     
     ////////////
     /// THIS IS NEW
