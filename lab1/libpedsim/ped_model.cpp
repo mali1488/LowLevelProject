@@ -89,7 +89,7 @@ void Ped::Model::naiveBalance() {
                 idx = i;
             }
         }
-        if (!heaviest_tree->isleaf && heaviest_tree->depth <= 1) {
+        if (!heaviest_tree->isleaf && heaviest_tree->depth <= 3) {
             Params[min_idx]->workLoad->push_back(heaviest_tree->tree1);
             Params[min_idx]->workLoad->push_back(heaviest_tree->tree2);
             Params[max_idx]->workLoad->erase(Params[max_idx]->workLoad->begin() + idx);
@@ -179,28 +179,28 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
         this->Params[0]->workLoad->push_back(tree);                
     } else {
         if (number_of_threads == 1) {
-            std::cout << "1 threads\n";
+	  std::cout << "1 threads\n";
             this->Params[0]->workLoad->push_back(tree->tree1);
             this->Params[0]->workLoad->push_back(tree->tree2);
             this->Params[0]->workLoad->push_back(tree->tree3);
             this->Params[0]->workLoad->push_back(tree->tree4);
         }
         if (number_of_threads == 2) {
-            std::cout << "2 threads\n";
+	  std::cout << "2 threads\n";
             this->Params[0]->workLoad->push_back(tree->tree1);
             this->Params[0]->workLoad->push_back(tree->tree2);
             this->Params[1]->workLoad->push_back(tree->tree3);
             this->Params[1]->workLoad->push_back(tree->tree4);
         }
         if (number_of_threads == 3) {
-            std::cout << "3 threads\n";
+	  std::cout << "3 threads\n";
             this->Params[0]->workLoad->push_back(tree->tree1);
             this->Params[1]->workLoad->push_back(tree->tree2);
             this->Params[2]->workLoad->push_back(tree->tree3);
             this->Params[2]->workLoad->push_back(tree->tree4);
         }
         if (number_of_threads >= 4) {
-            std::cout << "4 threads\n";
+	  std::cout << "4 threads\n";
             this->Params[0]->workLoad->push_back(tree->tree1);
             this->Params[1]->workLoad->push_back(tree->tree2);
             this->Params[2]->workLoad->push_back(tree->tree3);
@@ -443,11 +443,11 @@ void Ped::Model::tick()
       /*
       std::cout << "seqsize: " << tot << "\n";
       for (int i = 0; i < number_of_threads; i++) {
-        std::cout << "t" << i << " agents: " << agentCounter[i] << "\n";
+        //std::cout << "t" << i << " agents: " << agentCounter[i] << "\n";
       }
       */
       if (tickcounter >= 40) {
-        naiveBalance();
+        //naiveBalance();
         tickcounter = 0;
       }
 
@@ -603,6 +603,11 @@ void Ped::Model::tick()
 
 void  Ped::Model::doSafeMovementThreaded(Ped::Tagent *agent, std::list<Ped::Tagent*> *leavers, std::vector<Ped::Ttree*> *trees, Ped::Ttree *currentTree)
 {
+  if ((*treehash)[agent]->dangerZone(agent, trees)) {
+    leavers->push_back(agent);
+    return;
+  }
+
     std::vector<std::pair<int, int> > prioritizedAlternatives;
     std::pair<int, int> pDesired(agent->getDesiredX(), agent->getDesiredY());
     prioritizedAlternatives.push_back(pDesired);
@@ -624,12 +629,6 @@ void  Ped::Model::doSafeMovementThreaded(Ped::Tagent *agent, std::list<Ped::Tage
     prioritizedAlternatives.push_back(p1);
     prioritizedAlternatives.push_back(p2);
 
-    for (std::vector<pair<int, int> >::iterator it = prioritizedAlternatives.begin(); it != prioritizedAlternatives.end(); ++it) {
-        if (!((*treehash)[agent]->moveAgent(agent, trees, &(*it)))) {
-            leavers->push_back(agent);
-            return;
-        }
-    }
 
   set<Ped::Tagent *> neighbors = getNeighbors(agent->getX(), agent->getY(), 2, currentTree);
     
