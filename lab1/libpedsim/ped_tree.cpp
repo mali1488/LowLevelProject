@@ -22,7 +22,7 @@ pthread_mutexattr_t Attr;
 /// Description: set intial values
 /// \author  chgloor
 /// \date    2012-01-28
-Ped::Ttree::Ttree(Ped::Ttree *root,std::map<const Ped::Tagent*, Ped::Ttree*> *treehash, int pdepth, int pmaxDepth, double px, double py, double pw, double ph) {
+Ped::Ttree::Ttree(Ped::Ttree *root,std::map< Ped::Tagent*, Ped::Ttree*> *treehash, int pdepth, int pmaxDepth, double px, double py, double pw, double ph) {
   // more initializations here. not really necessary to put them into the initializator list, too.
   this->root = root != NULL ? root: this;
   this->treehash = treehash;
@@ -50,7 +50,7 @@ Ped::Ttree::Ttree(Ped::Ttree *root,std::map<const Ped::Tagent*, Ped::Ttree*> *tr
 /// \author  chgloor
 /// \date    2012-01-28
 
-Ped::Ttree::Ttree(Ped::Ttree *root,std::map<const Ped::Tagent*, Ped::Ttree*> *treehash, int pdepth, int pmaxDepth, double px, double py, double pw, double ph, short owner) {
+Ped::Ttree::Ttree(Ped::Ttree *root,std::map< Ped::Tagent*, Ped::Ttree*> *treehash, int pdepth, int pmaxDepth, double px, double py, double pw, double ph, short owner) {
   // more initializations here. not really necessary to put them into the initializator list, too.
   this->root = root != NULL ? root: this;
   this->treehash = treehash;
@@ -101,7 +101,7 @@ void Ped::Ttree::clear() {
   }
 }
 
-bool cmp(const Ped::Tagent *a, const Ped::Tagent *b) {
+bool treeCmp( Ped::Tagent *a,  Ped::Tagent *b) {
   return a->getX() == b->getX() && a->getY() == b->getY();
 }
 
@@ -110,7 +110,7 @@ bool cmp(const Ped::Tagent *a, const Ped::Tagent *b) {
 /// \author  chgloor
 /// \date    2012-01-28
 /// \param   *a The agent to add
-void Ped::Ttree::addAgent(const Ped::Tagent *a) {
+void Ped::Ttree::addAgent( Ped::Tagent *a) {
   if (isleaf) {
     agents->agentSet.insert(a);
     //model->setResponsibleTree(this, a);
@@ -135,7 +135,7 @@ void Ped::Ttree::addAgent(const Ped::Tagent *a) {
     isleaf = false;
     addChildren();
     while (!agents->agentSet.empty()) {
-      const Ped::Tagent *a = (*agents->agentSet.begin());
+       Ped::Tagent *a = (*agents->agentSet.begin());
       if ((a->getX() >= x+w/2) && (a->getY() >= y+h/2)) { 
 	tree3->addAgent(a); // 3
       }
@@ -185,11 +185,24 @@ Ped::Ttree* Ped::Ttree::getChildByPosition(double xIn, double yIn) {
 /// \author  chgloor
 /// \date    2012-01-28
 /// \param   *a the agent to update
-void Ped::Ttree::moveAgent(const Ped::Tagent *a) {
+void Ped::Ttree::moveAgent( Ped::Tagent *a) {
   if ((a->getX() < x) || (a->getX() > (x+w)) || (a->getY() < y) || (a->getY() > (y+h))) {
     agents->agentSet.erase(a);    
     root->addAgent(a);
   }
+}
+
+bool Ped::Ttree::moveAgent(Ped::Tagent *a, std::vector<Ped::Ttree*> *trees, std::pair<int,int> *pos) {
+  int r = 2;// TODO: kanske kan använda ostrikt olikhet om r = 2
+    for (std::vector<Ped::Ttree*>::iterator i = trees->begin(); i != trees->end(); ++i) {
+        Ped::Ttree *t = (*i);
+	/* Allow agents to stand on right-most and bottom-most border */
+        if (((t->x + t->w) >= (pos->first+r)) && ((t->x) < pos->first - r) && ((t->y + t->h) >= (pos->second + r)) && ((t->y) < (pos->second - r))) { // TODO: if segfault, control corner cases! (Might need to change r?)
+            //std::cout << "TRUE!\n";
+            return true;
+        }
+    }
+    return false;
 }
 
 std::vector<Ped::Ttree*> Ped::Ttree::getNeighbor() {
@@ -212,27 +225,17 @@ std::vector<Ped::Ttree*> Ped::Ttree::getNeighbor() {
     return ret;
 }
 
-bool Ped::Ttree::moveAgent(Ped::Tagent *a, std::vector<Ped::Ttree*> *trees, std::pair<int,int> *pos) {
-    int r = 1;
-    for (std::vector<Ped::Ttree*>::iterator i = trees->begin(); i != trees->end(); ++i) {
-        Ped::Ttree *t = (*i);
-        if (((t->x + t->w) >= (pos->first+r)) && ((t->x) <= pos->first) && ((t->y + t->h) >= (pos->second + r)) && ((t->y) <= (pos->second - r))) {
-            //std::cout << "TRUE!\n";
-            return true;
-        }
-    }
-    return false;
-}
 
-bool Ped::Ttree::dangerControl(const Ped::Tagent *a, int dist) {
-  if ((a->getY() - dist < x) || (a->getX() + dist > (x+w)) || (a->getY() - dist < y) || (a->getY() + dist > (y+h))) {
+
+bool Ped::Ttree::dangerControl( Ped::Tagent *a, int dist) {
+  if ((a->getX() - dist < x) || (a->getX() + dist > (x+w)) || (a->getY() - dist < y) || (a->getY() + dist > (y+h))) {
     return true;
   } else {
     return false;
   }
 }
 
-bool Ped::Ttree::removeAgent(const Ped::Tagent *a) {
+bool Ped::Ttree::removeAgent( Ped::Tagent *a) {
   if(isleaf) {
     size_t removedCount = agents->agentSet.erase(a);
     return (removedCount > 0);
@@ -270,8 +273,8 @@ int Ped::Ttree::cut() {
     agents->agentSet.insert(tree3->agents->agentSet.begin(), tree3->agents->agentSet.end());
     agents->agentSet.insert(tree4->agents->agentSet.begin(), tree4->agents->agentSet.end());
 
-    for (set<const Ped::Tagent*>::iterator it = agents->agentSet.begin(); it != agents->agentSet.end(); ++it) {
-      const Tagent *a = (*it);
+    for (set< Ped::Tagent*>::iterator it = agents->agentSet.begin(); it != agents->agentSet.end(); ++it) {
+       Tagent *a = (*it);
       (*treehash)[a] = this;
     }
     delete tree1;
@@ -298,14 +301,14 @@ void Ped::Ttree::getLeaves(std::vector<Ped::Ttree*> *ta) {
 /// \date    2012-01-28
 /// \return  The set of agents
 /// \todo This might be not very efficient, since all childs are checked, too. And then the set (set of pointer, but still) is being copied around.
-set<const Ped::Tagent*> Ped::Ttree::getAgents() const {
+set< Ped::Tagent*> Ped::Ttree::getAgents()  {
   if (isleaf)
     return agents->agentSet; 
-  set<const Ped::Tagent*> ta;
-  set<const Ped::Tagent*> t1 = tree1->getAgents();
-  set<const Ped::Tagent*> t2 = tree2->getAgents();
-  set<const Ped::Tagent*> t3 = tree3->getAgents();
-  set<const Ped::Tagent*> t4 = tree4->getAgents();
+  set< Ped::Tagent*> ta;
+  set< Ped::Tagent*> t1 = tree1->getAgents();
+  set< Ped::Tagent*> t2 = tree2->getAgents();
+  set< Ped::Tagent*> t3 = tree3->getAgents();
+  set< Ped::Tagent*> t4 = tree4->getAgents();
   ta.insert(t1.begin(), t1.end());
   ta.insert(t2.begin(), t2.end());
   ta.insert(t3.begin(), t3.end());
@@ -315,10 +318,10 @@ set<const Ped::Tagent*> Ped::Ttree::getAgents() const {
   return ta;
 }
 
-void Ped::Ttree::getAgents(list<const Ped::Tagent*>& outputList) const {
+void Ped::Ttree::getAgents(list< Ped::Tagent*>& outputList)  {
   if(isleaf) {
-    for (set<const Ped::Tagent*>::iterator it = agents->agentSet.begin(); it != agents->agentSet.end(); ++it) {
-      const Ped::Tagent* currentAgent = (*it);
+    for (set< Ped::Tagent*>::iterator it = agents->agentSet.begin(); it != agents->agentSet.end(); ++it) {
+       Ped::Tagent* currentAgent = (*it);
       outputList.push_back(currentAgent);
     }
   }
@@ -339,7 +342,7 @@ void Ped::Ttree::getAgents(list<const Ped::Tagent*>& outputList) const {
 /// \param   py The y co-ordinate of the point
 /// \param   pr The radius
 // ORIGINAL VERSION:
-bool Ped::Ttree::intersects(double px, double py, double pr) const {
+bool Ped::Ttree::intersects(double px, double py, double pr)  {
   if (((px+pr) >= x) && ((px-pr) <= (x+w)) && ((py+pr) >= y) && ((py-pr) <= (y+h)))
     return true; // x+-r/y+-r is inside
   else
@@ -348,7 +351,7 @@ bool Ped::Ttree::intersects(double px, double py, double pr) const {
 
 // Experimental version:
 /*
-bool Ped::Ttree::intersects(double px, double py, double pr) const {
+bool Ped::Ttree::intersects(double px, double py, double pr)  {
   if (((px-pr) >= x) && ((px+pr) <= (x+w)) && ((py-pr) >= y) && ((py+pr) <= (y+h)))
     return true; // x+-r/y+-r is inside
   else

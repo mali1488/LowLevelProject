@@ -32,42 +32,42 @@ namespace Ped {
       friend class Ped::Model;
 
     public:
-      Ttree(Ped::Ttree *root,std::map<const Ped::Tagent*, Ped::Ttree*> *treehash, int depth, int maxDepth, double x, double y, double w, double h, short owner);
+      Ttree(Ped::Ttree *root,std::map< Ped::Tagent*, Ped::Ttree*> *treehash, int depth, int maxDepth, double x, double y, double w, double h, short owner);
 
-      Ttree(Ped::Ttree *root,std::map<const Ped::Tagent*, Ped::Ttree*> *treehash, int depth, int maxDepth, double x, double y, double w, double h);
+      Ttree(Ped::Ttree *root,std::map< Ped::Tagent*, Ped::Ttree*> *treehash, int depth, int maxDepth, double x, double y, double w, double h);
         virtual ~Ttree();
         short owner;
 
         virtual void clear();
         void getLeaves(std::vector<Ped::Ttree*> *ta);
 
-        virtual void addAgent(const Ped::Tagent *a);
-        virtual void moveAgent(const Ped::Tagent *a);
+        virtual void addAgent( Ped::Tagent *a);
+        virtual void moveAgent( Ped::Tagent *a);
         virtual bool moveAgent(Ped::Tagent *a, std::vector<Ped::Ttree*> *tree, std::pair<int,int> *pos);
-        virtual bool removeAgent(const Ped::Tagent *a);
+        virtual bool removeAgent( Ped::Tagent *a);
         std::vector<Ped::Ttree*> getNeighbor();
 
-        virtual set<const Ped::Tagent*> getAgents() const;
-        virtual void getAgents(list<const Ped::Tagent*>& outputList) const;
+        virtual set< Ped::Tagent*> getAgents() ;
+        virtual void getAgents(list< Ped::Tagent*>& outputList) ;
 
-        virtual bool intersects(double px, double py, double pr) const;
+        virtual bool intersects(double px, double py, double pr) ;
 
-        double getx() const { return x; };
-        double gety() const { return y; };
-        double getw() const { return w; };
-        double geth() const { return h; };
+        double getx()  { return x; };
+        double gety()  { return y; };
+        double getw()  { return w; };
+        double geth()  { return h; };
 
-        int getdepth() const { return depth; };
+        int getdepth()  { return depth; };
 
 	void toString();
 	
-	bool moveCheck(const Ped::Tagent *a, int x, int y);
-	bool dangerControl(const Ped::Tagent *a, int dist);
+	bool moveCheck( Ped::Tagent *a, int x, int y);
+	bool dangerControl( Ped::Tagent *a, int dist);
 
         typedef struct lockedAgents {
 	  pthread_mutex_t lock; // = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 	  bool agentCAS;
-	  set<const Ped::Tagent*> agentSet;
+	  set< Ped::Tagent*> agentSet;
         } *LockedAgents;
 
     protected:
@@ -75,8 +75,8 @@ namespace Ped {
         Ttree* getChildByPosition(double x, double y);
 	int cut();
     protected:
-	std::map<const Ped::Tagent*, Ped::Ttree*> *treehash;
-        //set<const Ped::Tagent*> agents;	// set and not vector, since we need to delete elements from the middle very often
+	std::map< Ped::Tagent*, Ped::Ttree*> *treehash;
+        //set< Ped::Tagent*> agents;	// set and not vector, since we need to delete elements from the middle very often
                                         // set and not list, since deletion is based on pointer (search O(log n) instead of O(n)).
         LockedAgents agents;
 

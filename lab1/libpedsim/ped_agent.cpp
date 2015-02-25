@@ -38,6 +38,13 @@ void Ped::Tagent::computeForces() {
 
 void Ped::Tagent::go() {
   Tvector moveForce = waypointForce;
+
+  position.x = round(position.x + moveForce.x);
+  position.y = round(position.y + moveForce.y);
+}
+
+void Ped::Tagent::computeNextDesiredPosition() {
+  Tvector moveForce = waypointForce;
   
   ////////////
   /// THIS IS NEW

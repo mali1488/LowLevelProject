@@ -51,6 +51,8 @@ namespace Ped {
     // Update the position according to computed forces
     void go();
 
+    void computeNextDesiredPosition();
+
     const Tvector& getPosition() const { return position; }
     double getX() const { return position.x; };
     double getY() const { return position.y; };

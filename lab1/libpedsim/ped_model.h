@@ -23,7 +23,7 @@ namespace Ped{
   class Tagent;
   class Ttree;
   
-  enum IMPLEMENTATION {CUDA, VECTOR, OMP, PTHREAD, SEQ, TEST,OPENCL};
+  enum IMPLEMENTATION {CUDA, VECTOR, OMP, PTHREAD, SEQ, TEST, OPENCL, COLLISIONSEQ, COLLISIONPTHREAD};
   
 
   class Model
@@ -35,7 +35,7 @@ namespace Ped{
     const std::vector<Tagent*> getAgents() const;
 
     static void* threaded_tick(void* data);
-    static void* threaded_tickMain(void* data);
+    static void* threaded_tick_collision(void* data);
 
     void whereToGoVec(std::vector<Tagent*> agents);
     void goVec(int i);
@@ -84,10 +84,10 @@ namespace Ped{
     ///////////////////////////////////////////////
 
     // Updates the treehash, which maps each agent to the current tree node that contains it
-    void setResponsibleTree(Ped::Ttree *tree, const Ped::Tagent *agent);
+    void setResponsibleTree(Ped::Ttree *tree,  Ped::Tagent *agent);
 
     // Adds an agent to the tree structure
-    void placeAgent(const Ped::Tagent *a);
+    void placeAgent( Ped::Tagent *a);
     void calculateWorkLoad(int amountAgents);
     void naiveBalance();
 
@@ -104,6 +104,7 @@ namespace Ped{
     IMPLEMENTATION implementation;
     std::vector<Tagent*> agents;
     int number_of_threads;
+    pthread_t *threads;
 
     struct parameters {
       Model* model;
@@ -121,6 +122,13 @@ namespace Ped{
     };
     struct parameters** Params;
 
+    struct oldparams {
+      int start;
+      int end;
+      std::vector<Ped::Tagent*> agents;
+    };
+    struct oldparams** Oldparams;
+
     #ifdef __APPLE__
        dispatch_semaphore_t testSem;
     #else
@@ -132,7 +140,7 @@ namespace Ped{
     /// THIS IS NEW
     ///////////////////////////////////////////////
     void doSafeMovement( Ped::Tagent *agent);
-    void doSafeMovementTest( Ped::Tagent *agent, std::list<Ped::Tagent*> *leavers, std::vector<Ped::Ttree*> *trees);
+    void doSafeMovementThreaded( Ped::Tagent *agent, std::list<Ped::Tagent*> *leavers, std::vector<Ped::Ttree*> *trees);
     // The maximum quadtree depth
     static const int treeDepth = 10;    
 
@@ -141,11 +149,11 @@ namespace Ped{
 
     // Maps the agent to the tree node containing it. Convenience data structure
     // in order to update the tree in case the agent moves.
-    std::map<const Ped::Tagent*, Ped::Ttree*> *treehash;
+    std::map< Ped::Tagent*, Ped::Ttree*> *treehash;
 
     // Returns the set of neighboring agents for the specified position
-    set<const Ped::Tagent*> getNeighbors(int x, int y, int dist) const;
-    void getNeighbors(list<const Ped::Tagent*>& neighborList, int x, int y, int d) const;
+    set< Ped::Tagent*> getNeighbors(int x, int y, int dist) ;
+    void getNeighbors(list< Ped::Tagent*>& neighborList, int x, int y, int d) ;
 
     set<pthread_t> threadSet;
 
