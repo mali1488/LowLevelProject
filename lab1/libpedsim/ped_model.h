@@ -141,7 +141,7 @@ namespace Ped{
     /// THIS IS NEW
     ///////////////////////////////////////////////
     void doSafeMovement( Ped::Tagent *agent);
-    void doSafeMovementThreaded( Ped::Tagent *agent, std::list<Ped::Tagent*> *leavers, std::vector<Ped::Ttree*> *trees);
+    void doSafeMovementThreaded( Ped::Tagent *agent, std::list<Ped::Tagent*> *leavers, std::vector<Ped::Ttree*> *trees, Ped::Ttree *currentTree);
     // The maximum quadtree depth
     static const int treeDepth = 10;    
 
@@ -155,6 +155,8 @@ namespace Ped{
     // Returns the set of neighboring agents for the specified position
     set< Ped::Tagent*> getNeighbors(int x, int y, int dist) ;
     void getNeighbors(list< Ped::Tagent*>& neighborList, int x, int y, int d) ;
+    set< Ped::Tagent*> getNeighbors(int x, int y, int dist, Ped::Ttree *startTree) ;
+    void getNeighbors(list< Ped::Tagent*>& neighborList, int x, int y, int d, Ped::Ttree *startTree) ;
 
     set<pthread_t> threadSet;
 

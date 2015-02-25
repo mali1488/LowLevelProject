@@ -32,7 +32,6 @@
 struct parameters;
 
 bool bounce = true;
-int counter = 0;
 
 // Comparator used to identify if two agents differ in their position
 bool cmp(Ped::Tagent *a, Ped::Tagent *b) {
@@ -366,7 +365,7 @@ void* Ped::Model::threaded_tick_collision(void* parameters){
             currentAgent->whereToGo();
             currentAgent->computeNextDesiredPosition();
             // Search for neighboring agents
-	    params->model->doSafeMovementThreaded(currentAgent, params->leavers, trees);
+	    params->model->doSafeMovementThreaded(currentAgent, params->leavers, trees, (*i));
         }
     }
     params->model->setAgentCounter(params->idx, agentsUpdated);
@@ -441,11 +440,12 @@ void Ped::Model::tick()
               Params[i]->leavers->pop_front();
           }
       }
+      /*
       std::cout << "seqsize: " << tot << "\n";
       for (int i = 0; i < number_of_threads; i++) {
         std::cout << "t" << i << " agents: " << agentCounter[i] << "\n";
       }
-
+      */
       if (tickcounter >= 40) {
         naiveBalance();
         tickcounter = 0;
@@ -601,7 +601,7 @@ void Ped::Model::tick()
 }
 
 
-void  Ped::Model::doSafeMovementThreaded(Ped::Tagent *agent, std::list<Ped::Tagent*> *leavers, std::vector<Ped::Ttree*> *trees)
+void  Ped::Model::doSafeMovementThreaded(Ped::Tagent *agent, std::list<Ped::Tagent*> *leavers, std::vector<Ped::Ttree*> *trees, Ped::Ttree *currentTree)
 {
     std::vector<std::pair<int, int> > prioritizedAlternatives;
     std::pair<int, int> pDesired(agent->getDesiredX(), agent->getDesiredY());
@@ -631,7 +631,7 @@ void  Ped::Model::doSafeMovementThreaded(Ped::Tagent *agent, std::list<Ped::Tage
         }
     }
 
-  set<Ped::Tagent *> neighbors = getNeighbors(agent->getX(), agent->getY(), 2);
+  set<Ped::Tagent *> neighbors = getNeighbors(agent->getX(), agent->getY(), 2, currentTree);
     
   // Retrieve their positions
   std::vector<std::pair<int, int> > takenPositions;
@@ -729,6 +729,16 @@ set<Ped::Tagent*> Ped::Model::getNeighbors(int x, int y, int dist) {
   return set<Ped::Tagent*>(neighborList.begin(), neighborList.end());
 }
 
+set<Ped::Tagent*> Ped::Model::getNeighbors(int x, int y, int dist, Ped::Ttree *startTree) {
+  // if there is no tree, return all agents
+  // create the output list
+  list<Ped::Tagent*> neighborList;
+  getNeighbors(neighborList, x, y, dist, startTree);
+
+  // copy the neighbors to a set
+  return set<Ped::Tagent*>(neighborList.begin(), neighborList.end());
+}
+
 /// \date    2012-01-29
 /// \param   the list to populate
 /// \param   x the x coordinate
@@ -760,6 +770,33 @@ void Ped::Model::getNeighbors(list< Ped::Tagent*>& neighborList, int x, int y, i
       }
       if (t->tree4->intersects(x, y, dist)) {
 	counter += 1;
+	treestack.push(t->tree4);
+      }
+    }
+  }
+}
+
+void Ped::Model::getNeighbors(list< Ped::Tagent*>& neighborList, int x, int y, int dist, Ped::Ttree *startTree)  {
+  stack<Ped::Ttree*> treestack;
+
+  treestack.push(startTree);
+  while(!treestack.empty()) {
+    Ped::Ttree *t = treestack.top();
+    treestack.pop();
+    if (t->isleaf) {
+      t->getAgents(neighborList);
+    }
+    else {
+      if (t->tree1->intersects(x, y, dist)) {
+	treestack.push(t->tree1);
+      }
+      if (t->tree2->intersects(x, y, dist)) {
+	treestack.push(t->tree2);
+      }
+      if (t->tree3->intersects(x, y, dist)) {
+	treestack.push(t->tree3);
+      }
+      if (t->tree4->intersects(x, y, dist)) {
 	treestack.push(t->tree4);
       }
     }
