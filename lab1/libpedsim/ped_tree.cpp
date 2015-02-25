@@ -18,43 +18,15 @@ pthread_mutexattr_t Attr;
 #define ZONE_CONSTANT 10
 
 
-
 /// Description: set intial values
 /// \author  chgloor
 /// \date    2012-01-28
+
+
 Ped::Ttree::Ttree(Ped::Ttree *root,std::map< Ped::Tagent*, Ped::Ttree*> *treehash, int pdepth, int pmaxDepth, double px, double py, double pw, double ph) {
   // more initializations here. not really necessary to put them into the initializator list, too.
   this->root = root != NULL ? root: this;
   this->treehash = treehash;
-  // this should be moved somewhere else
-  pthread_mutexattr_init(&Attr);
-  pthread_mutexattr_settype(&Attr, PTHREAD_MUTEX_RECURSIVE);
-  isleaf = true;
-  this->agents = new struct lockedAgents;
-  this->agents->agentCAS = false;
-  pthread_mutex_init(&(this->agents->lock), &Attr);    
-
-  x = px;
-  y = py;
-  w = pw;
-  h = ph;
-  depth = pdepth;
-  maxDepth = pmaxDepth;
-  tree1 = NULL;
-  tree2 = NULL;
-  tree3 = NULL;
-  tree4 = NULL;
-};
-
-/// Description: set intial values
-/// \author  chgloor
-/// \date    2012-01-28
-
-Ped::Ttree::Ttree(Ped::Ttree *root,std::map< Ped::Tagent*, Ped::Ttree*> *treehash, int pdepth, int pmaxDepth, double px, double py, double pw, double ph, short owner) {
-  // more initializations here. not really necessary to put them into the initializator list, too.
-  this->root = root != NULL ? root: this;
-  this->treehash = treehash;
-  this->owner = owner;
   // this should be moved somewhere else
   pthread_mutexattr_init(&Attr);
   pthread_mutexattr_settype(&Attr, PTHREAD_MUTEX_RECURSIVE);
@@ -193,7 +165,7 @@ void Ped::Ttree::moveAgent( Ped::Tagent *a) {
 }
 
 bool Ped::Ttree::moveAgent(Ped::Tagent *a, std::vector<Ped::Ttree*> *trees, std::pair<int,int> *pos) {
-  int r = 2;// TODO: kanske kan använda ostrikt olikhet om r = 2
+  int r = 1;// TODO: kanske kan använda ostrikt olikhet om r = 2
     for (std::vector<Ped::Ttree*>::iterator i = trees->begin(); i != trees->end(); ++i) {
         Ped::Ttree *t = (*i);
 	/* Allow agents to stand on right-most and bottom-most border */

@@ -32,7 +32,6 @@ namespace Ped {
       friend class Ped::Model;
 
     public:
-      Ttree(Ped::Ttree *root,std::map< Ped::Tagent*, Ped::Ttree*> *treehash, int depth, int maxDepth, double x, double y, double w, double h, short owner);
 
       Ttree(Ped::Ttree *root,std::map< Ped::Tagent*, Ped::Ttree*> *treehash, int depth, int maxDepth, double x, double y, double w, double h);
         virtual ~Ttree();

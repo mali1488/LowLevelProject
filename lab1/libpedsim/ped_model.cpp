@@ -76,7 +76,7 @@ void Ped::Model::naiveBalance() {
             max_idx = i;
         }
     }
-    if (agentCounter[max_idx] * BALANCE_CONSTANT > agentCounter[min_idx]) {
+    if (agentCounter[max_idx] > (BALANCE_CONSTANT*agentCounter[min_idx])) {
       Ped::Ttree *heaviest_tree = (*Params[max_idx]->workLoad)[0];
         int heaviest_tree_agents = heaviest_tree->getAgents().size();
         int idx = 0;
@@ -90,7 +90,7 @@ void Ped::Model::naiveBalance() {
                 idx = i;
             }
         }
-        if (!heaviest_tree->isleaf && heaviest_tree->depth <= 2) {
+        if (!heaviest_tree->isleaf && heaviest_tree->depth <= 1) {
             Params[min_idx]->workLoad->push_back(heaviest_tree->tree1);
             Params[min_idx]->workLoad->push_back(heaviest_tree->tree2);
             Params[max_idx]->workLoad->erase(Params[max_idx]->workLoad->begin() + idx);
@@ -103,6 +103,7 @@ void Ped::Model::naiveBalance() {
 void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION choice, int numThreads) {
   total_opencl_time = 0;
   this->threads = NULL;
+  this->tickcounter = 0;
   
   if(choice != COLLISIONSEQ && choice != COLLISIONPTHREAD) {
     agents = agentsInScenario;
@@ -122,7 +123,7 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     treehash = new std::map<Ped::Tagent*, Ped::Ttree*>();
     
     // Create a new quadtree containing all agents
-    tree = new Ttree(NULL,treehash, 0, treeDepth, 0, 0, 160, 120, NULL); //TODO: dimension?
+    tree = new Ttree(NULL,treehash, 0, treeDepth, 0, 0, 160, 120); //TODO: dimension?
 
     for (std::vector<Ped::Tagent*>::iterator it = agents.begin(); it != agents.end(); ++it){
       tree->addAgent(*it);
@@ -161,27 +162,52 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
         this->agentCounter[i] = 0;
         this->Params[i]->idx = i;
 
-	#ifdef __APPLE__
-	this->Params[i]->semaphore = dispatch_semaphore_create(0);
-	this->Params[i]->mainSem = dispatch_semaphore_create(1);
-	#else
+#ifdef __APPLE__
+        this->Params[i]->semaphore = dispatch_semaphore_create(0);
+        this->Params[i]->mainSem = dispatch_semaphore_create(1);
+#else
         sem_init(&(this->Params[i]->semaphore), 1, 0);
-	sem_init(&(this->Params[i]->mainSem), 1, 1);
-	#endif
+        sem_init(&(this->Params[i]->mainSem), 1, 1);
+#endif
 
-	if(pthread_create(&threads[i],NULL,&(threaded_tick_collision),(void*)this->Params[i])) {
-	  perror("Could not create thread!");
-	  exit(1);
-	}
+        if(pthread_create(&threads[i],NULL,&(threaded_tick_collision),(void*)this->Params[i])) {
+            perror("Could not create thread!");
+            exit(1);
+        }
     }
-    tree->tree1->owner = 0;
-    tree->tree2->owner = 1;
-    tree->tree3->owner = 2;
-    tree->tree4->owner = 3;
-    this->Params[0]->workLoad->push_back(tree->tree1);
-    this->Params[1]->workLoad->push_back(tree->tree2);
-    this->Params[2]->workLoad->push_back(tree->tree3);
-    this->Params[3]->workLoad->push_back(tree->tree4);
+    // the tree does not split if agents < 8, i.e. tree->treeX is not defined
+    if (length <= 8) {
+        this->Params[0]->workLoad->push_back(tree);                
+    } else {
+        if (number_of_threads == 1) {
+            std::cout << "1 threads\n";
+            this->Params[0]->workLoad->push_back(tree->tree1);
+            this->Params[0]->workLoad->push_back(tree->tree2);
+            this->Params[0]->workLoad->push_back(tree->tree3);
+            this->Params[0]->workLoad->push_back(tree->tree4);
+        }
+        if (number_of_threads == 2) {
+            std::cout << "2 threads\n";
+            this->Params[0]->workLoad->push_back(tree->tree1);
+            this->Params[0]->workLoad->push_back(tree->tree2);
+            this->Params[1]->workLoad->push_back(tree->tree3);
+            this->Params[1]->workLoad->push_back(tree->tree4);
+        }
+        if (number_of_threads == 3) {
+            std::cout << "3 threads\n";
+            this->Params[0]->workLoad->push_back(tree->tree1);
+            this->Params[1]->workLoad->push_back(tree->tree2);
+            this->Params[2]->workLoad->push_back(tree->tree3);
+            this->Params[2]->workLoad->push_back(tree->tree4);
+        }
+        if (number_of_threads >= 4) {
+            std::cout << "4 threads\n";
+            this->Params[0]->workLoad->push_back(tree->tree1);
+            this->Params[1]->workLoad->push_back(tree->tree2);
+            this->Params[2]->workLoad->push_back(tree->tree3);
+            this->Params[3]->workLoad->push_back(tree->tree4);
+        }
+    }
   }
   
   if(choice == VECTOR || choice == TEST || choice == OPENCL) {
@@ -332,7 +358,8 @@ void* Ped::Model::threaded_tick_collision(void* parameters){
     
     int agentsUpdated = 0;    
     for (std::vector<Ped::Ttree*>::iterator i = trees->begin(); i != trees->end(); ++i) {
-      std::set<Ped::Tagent*> agents = (*i)->getAgents();
+        std::set<Ped::Tagent*> agents = (*i)->getAgents();
+
         agentsUpdated += agents.size();
         for (std::set<Ped::Tagent*>::iterator it = agents.begin(); it != agents.end(); ++it) {
             Ped::Tagent* currentAgent = (*it);
@@ -397,7 +424,6 @@ void Ped::Model::tick()
     }
   case COLLISIONPTHREAD:
     {
-      counter += 1;
       //std::cout << "counter: " << counter << "\n";
       for(int i = 0; i < number_of_threads; i++) { 
 	#ifdef __APPLE__
@@ -407,18 +433,23 @@ void Ped::Model::tick()
         #endif
       }
 
+      int tot = 0;
       for(int i = 0; i < number_of_threads; i++) {
+          tot += Params[i]->leavers->size();
           while(!(Params[i]->leavers->empty())) {
               doSafeMovement(Params[i]->leavers->front());
               Params[i]->leavers->pop_front();
           }
       }
-      //std::cout << "t0 agents: " << agentCounter[0] << "\n";
-      //std::cout << "t1 agents: " << agentCounter[1] << "\n";
-      //std::cout << "t2 agents: " << agentCounter[2] << "\n";
-      //std::cout << "t3 agents: " << agentCounter[3] << "\n";
+      std::cout << "seqsize: " << tot << "\n";
+      for (int i = 0; i < number_of_threads; i++) {
+        std::cout << "t" << i << " agents: " << agentCounter[i] << "\n";
+      }
 
-      //naiveBalance();
+      if (tickcounter >= 40) {
+        naiveBalance();
+        tickcounter = 0;
+      }
 
       for(int i = 0; i < number_of_threads; i++) {
 	#ifdef __APPLE__
@@ -427,6 +458,7 @@ void Ped::Model::tick()
 	sem_post(&(this->Params[i]->semaphore));
         #endif        
       }
+      tickcounter++;
 
       break;
     }

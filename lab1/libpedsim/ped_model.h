@@ -105,6 +105,7 @@ namespace Ped{
     std::vector<Tagent*> agents;
     int number_of_threads;
     pthread_t *threads;
+    int tickcounter;
 
     struct parameters {
       Model* model;
