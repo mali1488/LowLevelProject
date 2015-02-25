@@ -89,7 +89,7 @@ void Ped::Model::naiveBalance() {
                 idx = i;
             }
         }
-        if (!heaviest_tree->isleaf && heaviest_tree->depth <= 3) {
+        if (!heaviest_tree->isleaf && heaviest_tree->depth <= 2) {
             Params[min_idx]->workLoad->push_back(heaviest_tree->tree1);
             Params[min_idx]->workLoad->push_back(heaviest_tree->tree2);
             Params[max_idx]->workLoad->erase(Params[max_idx]->workLoad->begin() + idx);
@@ -603,11 +603,6 @@ void Ped::Model::tick()
 
 void  Ped::Model::doSafeMovementThreaded(Ped::Tagent *agent, std::list<Ped::Tagent*> *leavers, std::vector<Ped::Ttree*> *trees, Ped::Ttree *currentTree)
 {
-  if ((*treehash)[agent]->dangerZone(agent, trees)) {
-    leavers->push_back(agent);
-    return;
-  }
-
     std::vector<std::pair<int, int> > prioritizedAlternatives;
     std::pair<int, int> pDesired(agent->getDesiredX(), agent->getDesiredY());
     prioritizedAlternatives.push_back(pDesired);
@@ -617,18 +612,22 @@ void  Ped::Model::doSafeMovementThreaded(Ped::Tagent *agent, std::list<Ped::Tage
     std::pair<int, int> p1, p2;
     if (diffX == 0 || diffY == 0)
     {
-        // Agent wants to walk straight to North, South, West or East
         p1 = std::make_pair(pDesired.first + diffY, pDesired.second + diffX);
         p2 = std::make_pair(pDesired.first - diffY, pDesired.second - diffX);
     }
     else {
-        // Agent wants to walk diagonally
         p1 = std::make_pair(pDesired.first, agent->getY());
         p2 = std::make_pair(agent->getX(), pDesired.second);
     }
     prioritizedAlternatives.push_back(p1);
     prioritizedAlternatives.push_back(p2);
 
+    for (std::vector<pair<int, int> >::iterator it = prioritizedAlternatives.begin(); it != prioritizedAlternatives.end(); ++it) {
+        if (!((*treehash)[agent]->moveAgent(agent, trees, &(*it)))) {
+            leavers->push_back(agent);
+            return;
+        }
+    }
 
   set<Ped::Tagent *> neighbors = getNeighbors(agent->getX(), agent->getY(), 2, currentTree);
     
