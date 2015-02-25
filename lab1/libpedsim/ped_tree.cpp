@@ -164,6 +164,18 @@ void Ped::Ttree::moveAgent( Ped::Tagent *a) {
   }
 }
 
+bool Ped::Ttree::dangerZone(Ped::Tagent *a, std::vector<Ped::Ttree*> *trees) {
+  int r = 1;// TODO: kanske kan använda ostrikt olikhet om r = 2
+    for (std::vector<Ped::Ttree*>::iterator i = trees->begin(); i != trees->end(); ++i) {
+        Ped::Ttree *t = (*i);
+	/* Allow agents to stand on right-most and bottom-most border */
+        if (((t->x + t->w) >= (a->getX()+r)) && ((t->x) < a->getX() - r) && ((t->y + t->h) >= (a->getY() + r)) && ((t->y) < (a->getY() - r))) { // TODO: if segfault, control corner cases! (Might need to change r?)
+            return false;
+        }
+    }
+    return true;
+}
+
 bool Ped::Ttree::moveAgent(Ped::Tagent *a, std::vector<Ped::Ttree*> *trees, std::pair<int,int> *pos) {
   int r = 1;// TODO: kanske kan använda ostrikt olikhet om r = 2
     for (std::vector<Ped::Ttree*>::iterator i = trees->begin(); i != trees->end(); ++i) {
@@ -176,6 +188,8 @@ bool Ped::Ttree::moveAgent(Ped::Tagent *a, std::vector<Ped::Ttree*> *trees, std:
     }
     return false;
 }
+
+
 
 std::vector<Ped::Ttree*> Ped::Ttree::getNeighbor() {
     std::vector<Ped::Ttree*> ret;
