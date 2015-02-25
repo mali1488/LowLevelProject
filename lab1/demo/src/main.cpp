@@ -23,11 +23,10 @@
 //#define SIMULATION_STEPS 1000000
 #define SIMULATION_STEPS 5
 
-
-
 int main(int argc, char*argv[]) { 
   Ped::Model model;
   bool timing_mode = 0;
+  bool collision = false;
   int i = 1;
   QString scenefile = "scenario.xml";
   Ped::IMPLEMENTATION choice = Ped::SEQ;
@@ -37,12 +36,15 @@ int main(int argc, char*argv[]) {
     {
       if(strcmp(argv[i], "--seq") == 0){
 	choice = Ped::SEQ;
+	cout << "executing sequential\n";
       }
       if(strcmp(argv[i], "--omp") == 0){
 	choice = Ped::OMP;
+	cout << "executing omp\n";
       }
       if(strcmp(argv[i], "--pthread") == 0){
 	choice = Ped::PTHREAD;
+	cout << "executing pthread\n";
       }
       if(strcmp(argv[i], "--vector") == 0){
 	choice = Ped::VECTOR;
@@ -55,6 +57,10 @@ int main(int argc, char*argv[]) {
       if(strcmp(argv[i], "--opencl") == 0){
 	choice = Ped::OPENCL;
 	cout << "opencl" <<endl;
+      }
+      if(strcmp(argv[i], "--collision") == 0){
+	collision = true;
+	cout << "collision on" <<endl;
       }
 
       if(strncmp(argv[i], "--threads=", 10) == 0){
@@ -69,6 +75,15 @@ int main(int argc, char*argv[]) {
 
       i+=1;
     }
+
+  if(choice == Ped::PTHREAD && collision) {
+    choice = Ped::COLLISIONPTHREAD;
+  }
+
+  if(choice == Ped::SEQ && collision) {
+    choice = Ped::COLLISIONSEQ;
+  }
+
   ParseScenario parser(scenefile);
   model.setup(parser.getAgents(),choice,number_of_threads);
 
@@ -79,7 +94,7 @@ int main(int argc, char*argv[]) {
   // TODO: default 100
   const int delay_ms = 16;
   Timer *timer;
-#define TICK_LIMIT 10000
+#define TICK_LIMIT 1000000
 #define AS_FAST_AS_POSSIBLE 0
   if(timing_mode)
     {
