@@ -162,8 +162,8 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
         this->Params[i]->idx = i;
 
 	#ifdef __APPLE__
-	semaphore = dispatch_semaphore_create(0);
-	mainSem = dispatch_semaphore_create(1);
+	this->Params[i]->semaphore = dispatch_semaphore_create(0);
+	this->Params[i]->mainSem = dispatch_semaphore_create(1);
 	#else
         sem_init(&(this->Params[i]->semaphore), 1, 0);
 	sem_init(&(this->Params[i]->mainSem), 1, 1);
