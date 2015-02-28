@@ -42,7 +42,6 @@ namespace Ped {
 
         virtual void addAgent( Ped::Tagent *a);
         virtual void moveAgent( Ped::Tagent *a);
-        virtual bool moveAgent(Ped::Tagent *a, std::vector<Ped::Ttree*> *tree, std::pair<int,int> *pos);
 	virtual bool dangerZone(Ped::Tagent *a, std::vector<Ped::Ttree*> *tree);
         virtual bool removeAgent( Ped::Tagent *a);
         std::vector<Ped::Ttree*> getNeighbor();

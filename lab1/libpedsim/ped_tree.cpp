@@ -165,36 +165,20 @@ void Ped::Ttree::moveAgent( Ped::Tagent *a) {
 }
 
 bool Ped::Ttree::dangerZone(Ped::Tagent *a, std::vector<Ped::Ttree*> *trees) {
-  int r = 1;// TODO: kanske kan använda ostrikt olikhet om r = 2
+  int r = 1;
     for (std::vector<Ped::Ttree*>::iterator i = trees->begin(); i != trees->end(); ++i) {
         Ped::Ttree *t = (*i);
 	/* Allow agents to stand on right-most and bottom-most border */
-        if (((t->x + t->w) >= (a->getX()+r)) && ((t->x) < a->getX() - r) && ((t->y + t->h) >= (a->getY() + r)) && ((t->y) < (a->getY() - r))) { // TODO: if segfault, control corner cases! (Might need to change r?)
+        if (((t->x + t->w) >= (a->getX()+r)) && ((t->x) < a->getX() - r) && ((t->y + t->h) >= (a->getY() + r)) && ((t->y) < (a->getY() - r))) { // Allow agents to be closer to the right and bottom most borders compared to the left and top most.
             return false;
         }
     }
     return true;
 }
 
-bool Ped::Ttree::moveAgent(Ped::Tagent *a, std::vector<Ped::Ttree*> *trees, std::pair<int,int> *pos) {
-  int r = 1;// TODO: kanske kan använda ostrikt olikhet om r = 2
-    for (std::vector<Ped::Ttree*>::iterator i = trees->begin(); i != trees->end(); ++i) {
-        Ped::Ttree *t = (*i);
-	/* Allow agents to stand on right-most and bottom-most border */
-        if (((t->x + t->w) >= (pos->first+r)) && ((t->x) < pos->first - r) && ((t->y + t->h) >= (pos->second + r)) && ((t->y) < (pos->second - r))) { // TODO: if segfault, control corner cases! (Might need to change r?)
-            //std::cout << "TRUE!\n";
-            return true;
-        }
-    }
-    return false;
-}
-
-
-
 std::vector<Ped::Ttree*> Ped::Ttree::getNeighbor() {
     std::vector<Ped::Ttree*> ret;
     int pos;
-    //Ped::Ttree* max;
     if(root->tree1 == this) pos = 1;
     if(root->tree2 == this) pos = 2;
     if(root->tree3 == this) pos = 3;
@@ -202,11 +186,9 @@ std::vector<Ped::Ttree*> Ped::Ttree::getNeighbor() {
     if (pos == 1 || pos == 4) {
         ret.push_back(root->tree2);
         ret.push_back(root->tree3);
-        //max = root->tree2->getAgents().size() > root->tree3->getAgents().size() ? root->tree2 : root->tree3;
     } else {
         ret.push_back(root->tree1);
         ret.push_back(root->tree4);
-        //max = root->tree1->getAgents().size() > root->tree4->getAgents().size() ? root->tree1 : root->tree4;
     }
     return ret;
 }
@@ -299,8 +281,6 @@ set< Ped::Tagent*> Ped::Ttree::getAgents()  {
   ta.insert(t2.begin(), t2.end());
   ta.insert(t3.begin(), t3.end());
   ta.insert(t4.begin(), t4.end());
-  //std::cout << "ta.size: " << ta.size() << "\n";
-  //std::cout << "ta in getAgents: " << *(ta.begin()) << "\n";
   return ta;
 }
 
