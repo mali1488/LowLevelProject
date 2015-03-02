@@ -16,8 +16,8 @@ class MainWindow : public QMainWindow {
   //Q_OBJECT
  public:
   MainWindow() = delete;
-  MainWindow(const Ped::Model &model);
-  void paint();
+  MainWindow(const Ped::Model &model, bool heatmapFlag);
+  void paint(bool heatmapFlag);
   static int cellToPixel(int val);
   static const int cellsizePixel = 5; // TODO: make configurable (zoom?)
  private:
@@ -26,6 +26,17 @@ class MainWindow : public QMainWindow {
   QGraphicsScene * scene;
   const Ped::Model &model;
 std::vector<ViewAgent*> viewAgents;
+
+ ////////////
+  /// NEW
+  ///////////////////////////////////////////////
+
+  // The pixelmap containing the heatmap image
+  QGraphicsPixmapItem *pixmap;
+  
+  ////////////
+  /// END NEW
+  ///////////////////////////////////////////////
 };
 
 

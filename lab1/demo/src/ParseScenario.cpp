@@ -106,6 +106,12 @@ void ParseScenario::handleAgent()
     int xPos = x + qrand()/(RAND_MAX/dx) -dx/2;
     int yPos = y + qrand()/(RAND_MAX/dy) -dy/2;
     Ped::Tagent *a = new Ped::Tagent(xPos, yPos);
+
+    /* Don't allow negative positions */
+    /*
+    if(xPos <= 0 || yPos <= 0) {
+      return;
+      } */
     tempAgents.push_back(a);
   }
 }

@@ -13,6 +13,7 @@ class Timer : public QObject{
 
 public:
   Timer(Ped::Model &model,MainWindow &window, int time);
+  Timer(Ped::Model &model,MainWindow &window, int time, bool heatmapFlag);
   Timer() = delete;
   void setTickLimit(int limit);
   void qtTimerTick();
@@ -25,6 +26,7 @@ private:
   MainWindow &window;
   const int time;
   int maxTicks;
+  bool heatmapFlag = false;
 };
 
 

@@ -35,6 +35,7 @@
 struct parameters;
 
 bool bounce = true;
+bool heatmapFlag = false;
 bool M[WIDTH][HEIGHT];
 
 // Comparator used to identify if two agents differ in their position
@@ -103,10 +104,11 @@ void Ped::Model::naiveBalance() {
     }
 }
 
-void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION choice, int numThreads) {
+void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION choice, int numThreads, bool enableHeatMap) {
   total_opencl_time = 0;
   this->threads = NULL;
   this->tickcounter = 0;
+  heatmapFlag = enableHeatMap;
   
   if(choice != COLLISIONSEQ && choice != COLLISIONPTHREAD) {
     agents = agentsInScenario;
@@ -219,7 +221,11 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
         }
     }
   }
-  
+
+  if(heatmapFlag) {
+    setupHeatmapSeq();
+  }
+
   if(choice == VECTOR || choice == TEST || choice == OPENCL) {
     px = (float *) malloc(sizeof(float) * length);
     py = (float *) malloc(sizeof(float) * length);
@@ -416,6 +422,9 @@ void Ped::Model::tick()
 	  agent->computeNextDesiredPosition();                 
 	  doSafeMovement(agent);	    
 	}
+      if(heatmapFlag) {
+	updateHeatmapSeq();
+      }
       break;
     }
   case OMP:
@@ -452,6 +461,10 @@ void Ped::Model::tick()
         tickcounter = 0;
       }
 
+      if(heatmapFlag) {
+	updateHeatmapSeq();
+      }
+      
       for(int i = 0; i < number_of_threads; i++) {
 	#ifdef __APPLE__
 	dispatch_semaphore_signal(this->Params[i]->semaphore);

@@ -28,6 +28,7 @@ int main(int argc, char*argv[]) {
   bool timing_mode = 0;
   bool collision = false;
   int i = 1;
+  bool enableHeatmap = false;
   QString scenefile = "scenario.xml";
   Ped::IMPLEMENTATION choice = Ped::SEQ;
   int number_of_threads = std::thread::hardware_concurrency();
@@ -63,6 +64,11 @@ int main(int argc, char*argv[]) {
 	cout << "collision on" <<endl;
       }
 
+      if(strcmp(argv[i], "--heatmap") == 0){
+	enableHeatmap = true;
+	cout << "heatmap enabled" <<endl;
+      }
+
       if(strncmp(argv[i], "--threads=", 10) == 0){
 	number_of_threads = atoi(&argv[i][10]);
 	cout << "Executing simulation with " << number_of_threads << " threads. \n";
@@ -85,25 +91,25 @@ int main(int argc, char*argv[]) {
   }
 
   ParseScenario parser(scenefile);
-  model.setup(parser.getAgents(),choice,number_of_threads);
+  model.setup(parser.getAgents(),choice,number_of_threads, enableHeatmap);
 
   QApplication app(argc, argv);
   
-  MainWindow mainwindow(model);
+  MainWindow mainwindow(model, enableHeatmap);
   
   // TODO: default 100
   const int delay_ms = 16;
   Timer *timer;
-#define TICK_LIMIT 1000000
+#define TICK_LIMIT 10000
 #define AS_FAST_AS_POSSIBLE 0
   if(timing_mode)
     {
-      timer = new Timer(model,mainwindow,AS_FAST_AS_POSSIBLE);
+      timer = new Timer(model,mainwindow,AS_FAST_AS_POSSIBLE, enableHeatmap);
       timer->setTickLimit(TICK_LIMIT);
     }
   else
     {
-      timer = new Timer(model,mainwindow,delay_ms);
+      timer = new Timer(model,mainwindow,delay_ms, enableHeatmap);
       mainwindow.show();
 
     }

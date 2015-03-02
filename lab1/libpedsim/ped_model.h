@@ -24,18 +24,26 @@ namespace Ped{
   class Ttree;
   
   enum IMPLEMENTATION {CUDA, VECTOR, OMP, PTHREAD, SEQ, TEST, OPENCL, COLLISIONSEQ, COLLISIONPTHREAD};
-  
 
   class Model
   {
   public:
     double total_opencl_time;
-    void setup(std::vector<Tagent*> agentsInScenario, IMPLEMENTATION choice, int numThreads);
+    void setup(std::vector<Tagent*> agentsInScenario, IMPLEMENTATION choice, int numThreads, bool heatmapFlag);
     void tick();
     const std::vector<Tagent*> getAgents() const;
 
     static void* threaded_tick(void* data);
     static void* threaded_tick_collision(void* data);
+
+    ////////////
+    /// NEW
+    ///////////////////////////////////////////////
+    int const * const * getHeatmap() const;
+    int getHeatmapSize() const;
+    ////////////
+    /// END NEW
+    ///////////////////////////////////////////////
 
     void whereToGoVec(std::vector<Tagent*> agents);
     void goVec(int i);
@@ -106,6 +114,30 @@ namespace Ped{
     int number_of_threads;
     pthread_t *threads;
     int tickcounter;
+
+    ////////////
+    /// THIS IS NEW
+    ///////////////////////////////////////////////
+    #define SIZE 1024
+    #define CELLSIZE 5
+    #define SCALED_SIZE SIZE*CELLSIZE
+
+    int ** heatmap;
+
+    // The scaled heatmap that fits to the view
+    int ** scaled_heatmap;
+
+    // The final heatmap: blurred and scaled to fit the view
+    int ** blurred_heatmap;
+    
+    void setupHeatmapSeq();
+    void updateHeatmapSeq();
+
+    void setupHeatmapPar();
+    void updateHeatmapPar();
+    ////////////
+    /// END NEW
+    ///////////////////////////////////////////////
 
     struct parameters {
       Model* model;

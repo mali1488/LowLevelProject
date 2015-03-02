@@ -4,7 +4,7 @@
 #include <QBrush>
 
 #include <iostream>
-MainWindow::MainWindow(const Ped::Model &model) : model(model)
+MainWindow::MainWindow(const Ped::Model &model, bool heatmapFlag) : model(model)
 {
   
   // The Window 
@@ -42,13 +42,36 @@ MainWindow::MainWindow(const Ped::Model &model) : model(model)
       viewAgents.push_back(new ViewAgent(agent,scene));
     }
 
-  paint();
+  ////////////
+  /// NEW
+  ///////////////////////////////////////////////
+  if(heatmapFlag) {
+    const int heatmapSize = model.getHeatmapSize();
+    QPixmap pixmapDummy = QPixmap(heatmapSize, heatmapSize);
+    pixmap = scene->addPixmap(pixmapDummy);
+  }
+  ////////////
+  /// END NEW
+  ///////////////////////////////////////////////
+
+  paint(heatmapFlag);
   graphicsView->show(); // Redundant? 
 }
 
  
-void MainWindow::paint() {
+void MainWindow::paint(bool heatmapFlag) {
   //std::cout << "painting" << endl;
+  ////////////
+  /// NEW
+  ///////////////////////////////////////////////
+  if(heatmapFlag) {
+    const int heatmapSize = model.getHeatmapSize();
+    QImage image((uchar*) *model.getHeatmap(), heatmapSize, heatmapSize, heatmapSize * sizeof(int), QImage::Format_ARGB32);
+    pixmap->setPixmap(QPixmap::fromImage(image));
+  }
+  ////////////
+  /// END NEW
+  ///////////////////////////////////////////////
 
   
   for(auto a : viewAgents)

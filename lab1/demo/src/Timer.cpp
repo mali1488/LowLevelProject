@@ -5,8 +5,13 @@
 using namespace std;
 Timer::Timer(Ped::Model &model_,MainWindow &window_, int time_) : model(model_),window(window_),time(time_),maxTicks(-1)
 {
- 
+  this->heatmapFlag = false;
 
+}
+
+Timer::Timer(Ped::Model &model_,MainWindow &window_, int time_, bool heatmapFlag) : model(model_),window(window_),time(time_),maxTicks(-1)
+{
+  this->heatmapFlag = heatmapFlag;
 }
 
 
@@ -19,7 +24,7 @@ void Timer::setTickLimit(int limit)
 void Timer::tick()
 {
   model.tick();
-  window.paint();
+  window.paint(heatmapFlag);
   if(maxTicks-- == 0)
     {
       QApplication::quit();
