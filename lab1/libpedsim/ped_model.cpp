@@ -301,12 +301,10 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     }
 
     // Create contogious heatMap and initialize it to 0
-    heatMapContogious = (int*) malloc(sizeof(int)*WIDTH*HEIGHT);
+    heatMapContogious = (int *) calloc(WIDTH*HEIGHT, sizeof(int));
     rowSize = (int*) malloc(sizeof(int));
     *rowSize = WIDTH;
-    for(int i = 0; i < WIDTH*HEIGHT; i++) {
-      heatMapContogious[i] = 0;
-    }
+
     // Create memorybuffer for the GPU
     size_t memoryToAllocate = sizeof(int)*length;
     size_t heatMapSize = sizeof(int)*WIDTH*HEIGHT;
@@ -551,15 +549,17 @@ void Ped::Model::tick()
     }
   case COLLISIONPTHREAD:
     {
-      puts("tick");
-      for(int i = 0; i<length; i++) {
-	xDesired[i] = static_cast<int>(agents[i]->getDesiredX());
-	yDesired[i] = static_cast<int>(agents[i]->getDesiredY());
-	printf("p[%d] = %d, y[%d] = %d\n",i,xDesired[i],i,yDesired[i]);
-      }
+      if(heatmapFlag) {
+	puts("tick");
+	for(int i = 0; i<length; i++) {
+	  xDesired[i] = static_cast<int>(agents[i]->getDesiredX());
+	  yDesired[i] = static_cast<int>(agents[i]->getDesiredY());
+	  printf("p[%d] = %d, y[%d] = %d\n",i,xDesired[i],i,yDesired[i]);
+	}
 
-      clEnqueueWriteBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(int)*length,xDesired,0,NULL,NULL);
-      clEnqueueWriteBuffer(command_queue,memobjy,CL_TRUE,0,sizeof(int)*length,yDesired,0,NULL,NULL);
+	clEnqueueWriteBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(int)*length,xDesired,0,NULL,NULL);
+	clEnqueueWriteBuffer(command_queue,memobjy,CL_TRUE,0,sizeof(int)*length,yDesired,0,NULL,NULL);
+      }
       
       for(int i = 0; i < number_of_threads; i++) { 
 #ifdef __APPLE__
@@ -585,27 +585,28 @@ void Ped::Model::tick()
       //updateHeatmapSeq();
       //}
       // Execute OpenCL kernel as data parallel 
-      size_t global_item_size = length;
-      size_t local_item_size = 1;
-      ret = clEnqueueNDRangeKernel(command_queue, createHeatmapkernel, 1,NULL, &global_item_size,&local_item_size, 0, NULL, NULL);
-      if(ret != CL_SUCCESS) {
-	cout << "ret = " << ret << " :";
-	fprintf(stderr,"Failed to load kernels in tick\n");
-	exit(1);
-      }
-       ret = clEnqueueReadBuffer(command_queue,memobjHeatmap,CL_FALSE,0,sizeof(int)*length,heatMapContogious,0,NULL,NULL);
+      if(heatmapFlag) {
+	size_t global_item_size = length;
+	size_t local_item_size = 1;
+	ret = clEnqueueNDRangeKernel(command_queue, createHeatmapkernel, 1,NULL, &global_item_size,&local_item_size, 0, NULL, NULL);
+	if(ret != CL_SUCCESS) {
+	  cout << "ret = " << ret << " :";
+	  fprintf(stderr,"Failed to load kernels in tick\n");
+	  exit(1);
+	}
+	ret = clEnqueueReadBuffer(command_queue,memobjHeatmap,CL_FALSE,0,sizeof(int)*WIDTH*HEIGHT,heatMapContogious,0,NULL,NULL);
 
-      clFinish(command_queue);
-      clFlush(command_queue);
+	clFinish(command_queue);
 
-      for(int i = 0; i < WIDTH; i++){
-	for(int j = 0; j < HEIGHT; j++) {
-	  if((heatmap[i][j] > 0) && (heatmap[i][j] < heatMapContogious[i*WIDTH + j])){
-	    printf("heatmap before %d: ",heatmap[i][j]);
-	    heatmap[i][j] = heatMapContogious[i*WIDTH + j];
-	    printf("heatma after : %d \n",heatmap[i][j]);
-	  } else {
-	    heatmap[i][j] = heatMapContogious[i*WIDTH + j];
+	for(int y = 0; y < HEIGHT; y++){
+	  for(int x = 0; x < WIDTH; x++) {
+	    if((heatmap[y][x] >= 0) && (heatmap[y][x] < heatMapContogious[y*WIDTH + x])){
+	      printf("heatmap[%d][%d] before %d: ", y, x, heatmap[y][x]);
+	      heatmap[y][x] = heatMapContogious[y*WIDTH + x];
+	      printf("heatmap[%d][%d] after : %d \n", y, x, heatmap[y][x]);
+	    } else {
+	      heatmap[y][x] = heatMapContogious[y*WIDTH + x];
+	    }
 	  }
 	}
       }

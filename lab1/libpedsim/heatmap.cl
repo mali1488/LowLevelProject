@@ -1,10 +1,8 @@
-#pragma OPENCL EXTENSION cl_khr_int64_base_atomics : enable
-
 __kernel void heatmap(__global int* heatmap, __global int* row_size,__global int* x,__global int* y) {
   int SIZE = 1024;
   int agent = get_global_id(0);
-  if((x[agent] <= SIZE) || (y[agent] <= SIZE)) {
-    atomic_add(&(heatmap[x[agent] * (*row_size) + y[agent]]), 40);
+  if((x[agent] >= 0) && (x[agent] <= SIZE) && (y[agent] <= SIZE) && (y[agent] >= 0)) {
+    atomic_add(&(heatmap[y[agent] * (*row_size) + x[agent]]), 40);
   }
 }
 /*
