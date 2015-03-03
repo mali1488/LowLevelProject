@@ -248,14 +248,14 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
   }
 
   if(heatmapFlag) {
-    px = (float *) malloc(sizeof(float) * length);
-    py = (float *) malloc(sizeof(float) * length);
-   
-    for(int i = 0; i<length; i++) {
-      px[i] = static_cast<int>(agents[i]->getDesiredX());
-      py[i] = static_cast<int>(agents[i]->getDesiredY());
-    }
+    xDesired = (int *) malloc(sizeof(int) * length);
+    yDesired = (int *) malloc(sizeof(int) * length);
 
+    for(int i = 0; i<length; i++) {
+      // static_cast<int>
+      xDesired[i] = static_cast<int>(agents[i]->getDesiredX());
+      yDesired[i] = static_cast<int>(agents[i]->getDesiredY());
+    }
     // ret is an error return value
     // Load the source code containing the kernel
     // and see if it succeded
@@ -279,7 +279,7 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     }
 
     ret_num_devices = CL_DEVICE_MAX_COMPUTE_UNITS;
-    ret = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_DEFAULT, 1, &device_id, &ret_num_devices);
+    ret = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_GPU, 1, &device_id, &ret_num_devices);
 
     if(ret != CL_SUCCESS) {
       fprintf(stderr,"Failed to get deviceID\n");
@@ -362,8 +362,8 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     /* Write starting positions to device memory */
     clEnqueueWriteBuffer(command_queue,memobjHeatmap,CL_FALSE,0,heatMapSize,heatMapContogious,0,NULL,NULL);
     clEnqueueWriteBuffer(command_queue,memobjRowSize,CL_FALSE,0,sizeof(int),rowSize,0,NULL,NULL);
-    clEnqueueWriteBuffer(command_queue,memobjx,CL_FALSE,0,sizeof(int)*length,px,0,NULL,NULL);
-    clEnqueueWriteBuffer(command_queue,memobjy,CL_FALSE,0,sizeof(int)*length,py,0,NULL,NULL);
+    clEnqueueWriteBuffer(command_queue,memobjx,CL_FALSE,0,sizeof(int)*length,xDesired,0,NULL,NULL);
+    clEnqueueWriteBuffer(command_queue,memobjy,CL_FALSE,0,sizeof(int)*length,yDesired,0,NULL,NULL);
   }
   
   if(choice == OPENCL) {
@@ -551,14 +551,15 @@ void Ped::Model::tick()
     }
   case COLLISIONPTHREAD:
     {
-     
+      puts("tick");
       for(int i = 0; i<length; i++) {
-	px[i] = static_cast<int>(agents[i]->getDesiredX());
-	py[i] = static_cast<int>(agents[i]->getDesiredY());
+	xDesired[i] = static_cast<int>(agents[i]->getDesiredX());
+	yDesired[i] = static_cast<int>(agents[i]->getDesiredY());
+	printf("p[%d] = %d, y[%d] = %d\n",i,xDesired[i],i,yDesired[i]);
       }
 
-      clEnqueueWriteBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(int)*length,px,0,NULL,NULL);
-      clEnqueueWriteBuffer(command_queue,memobjy,CL_TRUE,0,sizeof(int)*length,py,0,NULL,NULL);
+      clEnqueueWriteBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(int)*length,xDesired,0,NULL,NULL);
+      clEnqueueWriteBuffer(command_queue,memobjy,CL_TRUE,0,sizeof(int)*length,yDesired,0,NULL,NULL);
       
       for(int i = 0; i < number_of_threads; i++) { 
 #ifdef __APPLE__
@@ -599,17 +600,15 @@ void Ped::Model::tick()
 
       for(int i = 0; i < WIDTH; i++){
 	for(int j = 0; j < HEIGHT; j++) {
-	  if(heatmap[i][j] > 0){
-	    printf("heatmap before %d: after :",heatmap[i][j]);
+	  if((heatmap[i][j] > 0) && (heatmap[i][j] < heatMapContogious[i*WIDTH + j])){
+	    printf("heatmap before %d: ",heatmap[i][j]);
+	    heatmap[i][j] = heatMapContogious[i*WIDTH + j];
+	    printf("heatma after : %d \n",heatmap[i][j]);
+	  } else {
+	    heatmap[i][j] = heatMapContogious[i*WIDTH + j];
 	  }
-	  heatmap[i][j] = heatMapContogious[i*WIDTH + j];
-	  if(heatmap[i][j] > 0)
-	    {
-	      printf("%d \n",heatmap[i][j]);
-	    }
 	}
       }
-      puts("--------");
       
       for(int i = 0; i < number_of_threads; i++) {
 #ifdef __APPLE__

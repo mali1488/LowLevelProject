@@ -129,6 +129,8 @@ namespace Ped{
     int ** heatmap;
     int * heatMapContogious;
     int * rowSize;
+    int * xDesired;
+    int * yDesired;
     // The scaled heatmap that fits to the view
     int ** scaled_heatmap;
 

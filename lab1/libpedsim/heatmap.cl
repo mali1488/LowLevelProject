@@ -1,11 +1,13 @@
+#pragma OPENCL EXTENSION cl_khr_int64_base_atomics : enable
+
 __kernel void heatmap(__global int* heatmap, __global int* row_size,__global int* x,__global int* y) {
   int SIZE = 1024;
   int agent = get_global_id(0);
   if((x[agent] <= SIZE) || (y[agent] <= SIZE)) {
-    printf("update heatmap[%d][%d] agen%d\n",x[agent],y[agent],agent);
-    atom_add(&(heatmap[x[agent] * (*row_size) + y[agent]]), 40);
+    atomic_add(&(heatmap[x[agent] * (*row_size) + y[agent]]), 40);
   }
 }
+/*
   const int w[5][5] = {
     {1,4,7,4,1},
     {4,16,26,16,4},
@@ -46,3 +48,4 @@ __kernel void gaussian_blur(__global float* scaledHeatmap, __global int row_size
     sum = sum/WEIGHTSUM;
     scaledHeapmap[row * row_size + column] = 0x00FF0000 | sum<<24;
 }
+*/
