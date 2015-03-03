@@ -81,6 +81,7 @@ namespace Ped{
     cl_mem memobjHeatmap;
     cl_program program;
     cl_kernel createHeatmapkernel;
+    cl_kernel fadeHeatmapkernel;
     cl_kernel kernel;
     cl_platform_id platform_id;
     cl_uint ret_num_devices; 

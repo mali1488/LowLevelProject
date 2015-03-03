@@ -345,6 +345,7 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
 
     // Load the program to the kernel and loads the argument to the kernels
     createHeatmapkernel = clCreateKernel(program, "heatmap", &ret);
+    fadeHeatmapkernel = clCreateKernel(program, "fadeHeatmap", &ret);
     if(createHeatmapkernel==NULL){
       fprintf(stderr,"Failed to create kernel\n");
       exit(1);
@@ -353,6 +354,12 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
        clSetKernelArg(createHeatmapkernel, 1, sizeof(cl_mem), (void *)&memobjRowSize) != CL_SUCCESS ||
        clSetKernelArg(createHeatmapkernel, 2, sizeof(cl_mem), (void *)&memobjx) != CL_SUCCESS ||
        clSetKernelArg(createHeatmapkernel, 3, sizeof(cl_mem), (void *)&memobjy) != CL_SUCCESS) {
+      fprintf(stderr,"Failed to set kernel parameters\n");
+      exit(1);
+    }
+
+    if(clSetKernelArg(fadeHeatmapkernel, 0, sizeof(cl_mem), (void *)&memobjHeatmap) != CL_SUCCESS || 
+       clSetKernelArg(fadeHeatmapkernel, 1, sizeof(cl_mem), (void *)&memobjRowSize) != CL_SUCCESS) {
       fprintf(stderr,"Failed to set kernel parameters\n");
       exit(1);
     }
@@ -586,8 +593,27 @@ void Ped::Model::tick()
       //}
       // Execute OpenCL kernel as data parallel 
       if(heatmapFlag) {
+	/* 
+	   // sequential fade
+	for(int x = 0; x < SIZE; x++) {
+	  for(int y = 0; y < SIZE; y++)
+	    {
+	      // heat fades
+	      heatmap[y][x] *= 0.80;
+	    }
+	}
+	for(int y = 0; y < HEIGHT; y++){
+	  for(int x = 0; x < WIDTH; x++) {
+	    heatMapContogious[y*WIDTH + x] = heatmap[y][x];
+	  }
+	  }
+	  clEnqueueWriteBuffer(command_queue,memobjHeatmap,CL_FALSE,0,WIDTH*HEIGHT,heatMapContogious,0,NULL,NULL); */
+	const size_t global_fade_size[] = {HEIGHT, WIDTH};
 	size_t global_item_size = length;
-	size_t local_item_size = 1;
+	size_t local_item_size = 1;	
+
+	ret = clEnqueueNDRangeKernel(command_queue, fadeHeatmapkernel, 1,NULL, global_fade_size,&local_item_size, 0, NULL, NULL);
+	
 	ret = clEnqueueNDRangeKernel(command_queue, createHeatmapkernel, 1,NULL, &global_item_size,&local_item_size, 0, NULL, NULL);
 	if(ret != CL_SUCCESS) {
 	  cout << "ret = " << ret << " :";
@@ -609,6 +635,8 @@ void Ped::Model::tick()
 	    }
 	  }
 	}
+
+	updateHeatmapPar();
       }
       
       for(int i = 0; i < number_of_threads; i++) {
