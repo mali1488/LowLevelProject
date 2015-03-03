@@ -29,6 +29,7 @@ void Ped::Model::setupHeatmapPar()
 void Ped::Model::updateHeatmapPar()
 {
   /* <create> */
+  /*
   for(int x = 0; x < SIZE; x++)
   {
     for(int y = 0; y < SIZE; y++)
@@ -36,8 +37,9 @@ void Ped::Model::updateHeatmapPar()
       // heat fades
       heatmap[y][x] *= 0.80;
     }
-  }
+    } */
   
+  /*
   // Count how many agents want to go to each location
   for(int i = 0; i < agents.size(); i++)
   {
@@ -53,15 +55,16 @@ void Ped::Model::updateHeatmapPar()
     // intensify heat for better color results
     heatmap[y][x] += 40;
 
-  }
+    } */
 
+  /*
   for(int x = 0; x < SIZE; x++)
   {
     for(int y = 0; y < SIZE; y++)
     {
       heatmap[y][x]=  heatmap[y][x] < 255 ?heatmap[y][x]:255;
     }
-  }
+    } */
   /* </create> */
   
   /* <scale> */
