@@ -612,7 +612,7 @@ void Ped::Model::tick()
 	size_t global_item_size = length;
 	size_t local_item_size = 1;	
 
-	ret = clEnqueueNDRangeKernel(command_queue, fadeHeatmapkernel, 1,NULL, global_fade_size,&local_item_size, 0, NULL, NULL);
+	ret = clEnqueueNDRangeKernel(command_queue, fadeHeatmapkernel, 2,NULL, global_fade_size,NULL, 0, NULL, NULL);
 	
 	ret = clEnqueueNDRangeKernel(command_queue, createHeatmapkernel, 1,NULL, &global_item_size,&local_item_size, 0, NULL, NULL);
 	if(ret != CL_SUCCESS) {

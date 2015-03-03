@@ -1,8 +1,7 @@
-__kernel void fadeHeatmap(__global float* heatmap, __global int* row_size) {
-  printf("Hello I'm fade\n");
-    int row = get_global_id(0);
-    int column = get_global_id(1);
-    heatmap[row*(*row_size) + column] *= 0.80;
+__kernel void fadeHeatmap(__global int* heatmap, __global int* row_size) {
+  int row = get_global_id(0);
+  int column = get_global_id(1);
+  heatmap[row*(*row_size) + column] *= 0.80;
 }
 
 __kernel void heatmap(__global int* heatmap, __global int* row_size,__global int* x,__global int* y) {
