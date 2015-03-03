@@ -44,64 +44,64 @@ bool cmp(Ped::Tagent *a, Ped::Tagent *b) {
 }
 
 void Ped::Model::calculateWorkLoad(int amountAgents) {
-    int avg = amountAgents / (this->number_of_threads);
-    std::cout << "avg: " << avg << "\n";
-    std::vector<Ped::Ttree*> *leaves = new vector<Ped::Ttree*>;
-    this->tree->getLeaves(leaves);
-    int thread = 0;
-    int leafCounter = 0;
+  int avg = amountAgents / (this->number_of_threads);
+  std::cout << "avg: " << avg << "\n";
+  std::vector<Ped::Ttree*> *leaves = new vector<Ped::Ttree*>;
+  this->tree->getLeaves(leaves);
+  int thread = 0;
+  int leafCounter = 0;
     
-    std::vector<Ped::Ttree*>::iterator it;
-    for (it = leaves->begin(); it != leaves->end(); ++it) {
-        leafCounter += (*it)->agents->agentSet.size();
-        if (agentCounter[thread % number_of_threads] > avg) {
-            thread++;
-        }
-        Params[thread % number_of_threads]->workLoad->push_back(*it);
-        agentCounter[thread % number_of_threads] += (*it)->agents->agentSet.size();
+  std::vector<Ped::Ttree*>::iterator it;
+  for (it = leaves->begin(); it != leaves->end(); ++it) {
+    leafCounter += (*it)->agents->agentSet.size();
+    if (agentCounter[thread % number_of_threads] > avg) {
+      thread++;
     }
-    std::cout << "leaf size: " << leafCounter << "\n";
-    std::cout << "agents: " << amountAgents << "\n";
-    std::cout << "agents in tree: " << tree->getAgents().size() << "\n";
-    if (leafCounter != amountAgents) {
-        std::cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAH\n\n\n\n\n\n\n";
-    }
+    Params[thread % number_of_threads]->workLoad->push_back(*it);
+    agentCounter[thread % number_of_threads] += (*it)->agents->agentSet.size();
+  }
+  std::cout << "leaf size: " << leafCounter << "\n";
+  std::cout << "agents: " << amountAgents << "\n";
+  std::cout << "agents in tree: " << tree->getAgents().size() << "\n";
+  if (leafCounter != amountAgents) {
+    std::cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAH\n\n\n\n\n\n\n";
+  }
 
 }
 
 void Ped::Model::naiveBalance() {
-    int min_idx = 0;
-    int max_idx = 0;
-    for (int i = 1; i < number_of_threads; i++) {
-        if (agentCounter[i] < agentCounter[min_idx]) {
-            min_idx = i;
-        }
-        if (agentCounter[i] > agentCounter[max_idx]) {
-            max_idx = i;
-        }
+  int min_idx = 0;
+  int max_idx = 0;
+  for (int i = 1; i < number_of_threads; i++) {
+    if (agentCounter[i] < agentCounter[min_idx]) {
+      min_idx = i;
     }
-    if (agentCounter[max_idx] > (BALANCE_CONSTANT*agentCounter[min_idx])) {
-      Ped::Ttree *heaviest_tree = (*Params[max_idx]->workLoad)[0];
-        int heaviest_tree_agents = heaviest_tree->getAgents().size();
-        int idx = 0;
+    if (agentCounter[i] > agentCounter[max_idx]) {
+      max_idx = i;
+    }
+  }
+  if (agentCounter[max_idx] > (BALANCE_CONSTANT*agentCounter[min_idx])) {
+    Ped::Ttree *heaviest_tree = (*Params[max_idx]->workLoad)[0];
+    int heaviest_tree_agents = heaviest_tree->getAgents().size();
+    int idx = 0;
 
-        for (int i = 1; i < Params[max_idx]->workLoad->size(); i++) {
-	  Ped::Ttree *currentTree = (*Params[max_idx]->workLoad)[i];
-            int currentAgents = currentTree->getAgents().size();
-            if (currentAgents > heaviest_tree_agents) {
-                heaviest_tree = currentTree;
-                heaviest_tree_agents = currentAgents;
-                idx = i;
-            }
-        }
-        if (!heaviest_tree->isleaf && heaviest_tree->depth <= 2) {
-            Params[min_idx]->workLoad->push_back(heaviest_tree->tree1);
-            Params[min_idx]->workLoad->push_back(heaviest_tree->tree2);
-            Params[max_idx]->workLoad->erase(Params[max_idx]->workLoad->begin() + idx);
-            Params[max_idx]->workLoad->push_back(heaviest_tree->tree3);
-            Params[max_idx]->workLoad->push_back(heaviest_tree->tree4);
-        }
+    for (int i = 1; i < Params[max_idx]->workLoad->size(); i++) {
+      Ped::Ttree *currentTree = (*Params[max_idx]->workLoad)[i];
+      int currentAgents = currentTree->getAgents().size();
+      if (currentAgents > heaviest_tree_agents) {
+	heaviest_tree = currentTree;
+	heaviest_tree_agents = currentAgents;
+	idx = i;
+      }
     }
+    if (!heaviest_tree->isleaf && heaviest_tree->depth <= 2) {
+      Params[min_idx]->workLoad->push_back(heaviest_tree->tree1);
+      Params[min_idx]->workLoad->push_back(heaviest_tree->tree2);
+      Params[max_idx]->workLoad->erase(Params[max_idx]->workLoad->begin() + idx);
+      Params[max_idx]->workLoad->push_back(heaviest_tree->tree3);
+      Params[max_idx]->workLoad->push_back(heaviest_tree->tree4);
+    }
+  }
 }
 
 void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION choice, int numThreads, bool enableHeatMap) {
@@ -109,7 +109,7 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
   this->threads = NULL;
   this->tickcounter = 0;
   heatmapFlag = enableHeatMap;
-  
+ 
   if(choice != COLLISIONSEQ && choice != COLLISIONPTHREAD) {
     agents = agentsInScenario;
     std::vector<Tagent*> agents = Ped::Model::getAgents();
@@ -117,7 +117,7 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
 
   implementation = choice;
   number_of_threads = numThreads;
-  if(choice == COLLISIONSEQ || choice == COLLISIONPTHREAD) {
+  if(choice == COLLISIONSEQ || choice == COLLISIONPTHREAD || choice == HEATMAP) {
     /* Location matrix, implementation TODO */
     for(int i = 0; i < WIDTH; i++) {
       for(int j = 0; i < HEIGHT; i++) {
@@ -125,7 +125,7 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
       }
     }
 
-  // Hack! do not allow agents to be on the same position. Remove duplicates from scenario.
+    // Hack! do not allow agents to be on the same position. Remove duplicates from scenario.
     bool (*fn_pt)(Ped::Tagent*, Ped::Tagent*) = cmp;
     std::set<Ped::Tagent*, bool(*)(Ped::Tagent*, Ped::Tagent*)> agentsWithUniquePosition (fn_pt);
     std::copy(agentsInScenario.begin(), agentsInScenario.end(), std::inserter(agentsWithUniquePosition, agentsWithUniquePosition.begin()));
@@ -167,58 +167,58 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     this->threads = new pthread_t[number_of_threads];
 
     for (int i = 0; i < number_of_threads; i++) {
-        this->Params[i] = new struct parameters();
-        this->Params[i]->workLoad = new vector<Ped::Ttree*>;
-        this->Params[i]->leavers = new list<Ped::Tagent*>;
-        this->Params[i]->model = this;
-        this->agentCounter[i] = 0;
-        this->Params[i]->idx = i;
+      this->Params[i] = new struct parameters();
+      this->Params[i]->workLoad = new vector<Ped::Ttree*>;
+      this->Params[i]->leavers = new list<Ped::Tagent*>;
+      this->Params[i]->model = this;
+      this->agentCounter[i] = 0;
+      this->Params[i]->idx = i;
 
 #ifdef __APPLE__
-        this->Params[i]->semaphore = dispatch_semaphore_create(0);
-        this->Params[i]->mainSem = dispatch_semaphore_create(1);
+      this->Params[i]->semaphore = dispatch_semaphore_create(0);
+      this->Params[i]->mainSem = dispatch_semaphore_create(1);
 #else
-        sem_init(&(this->Params[i]->semaphore), 1, 0);
-        sem_init(&(this->Params[i]->mainSem), 1, 1);
+      sem_init(&(this->Params[i]->semaphore), 1, 0);
+      sem_init(&(this->Params[i]->mainSem), 1, 1);
 #endif
 
-        if(pthread_create(&threads[i],NULL,&(threaded_tick_collision),(void*)this->Params[i])) {
-            perror("Could not create thread!");
-            exit(1);
-        }
+      if(pthread_create(&threads[i],NULL,&(threaded_tick_collision),(void*)this->Params[i])) {
+	perror("Could not create thread!");
+	exit(1);
+      }
     }
     // the tree does not split if agents < 8, i.e. tree->treeX is not defined
     if (length <= 8) {
-        this->Params[0]->workLoad->push_back(tree);                
+      this->Params[0]->workLoad->push_back(tree);                
     } else {
-        if (number_of_threads == 1) {
-	  std::cout << "1 threads\n";
-            this->Params[0]->workLoad->push_back(tree->tree1);
-            this->Params[0]->workLoad->push_back(tree->tree2);
-            this->Params[0]->workLoad->push_back(tree->tree3);
-            this->Params[0]->workLoad->push_back(tree->tree4);
-        }
-        if (number_of_threads == 2) {
-	  std::cout << "2 threads\n";
-            this->Params[0]->workLoad->push_back(tree->tree1);
-            this->Params[0]->workLoad->push_back(tree->tree2);
-            this->Params[1]->workLoad->push_back(tree->tree3);
-            this->Params[1]->workLoad->push_back(tree->tree4);
-        }
-        if (number_of_threads == 3) {
-	  std::cout << "3 threads\n";
-            this->Params[0]->workLoad->push_back(tree->tree1);
-            this->Params[1]->workLoad->push_back(tree->tree2);
-            this->Params[2]->workLoad->push_back(tree->tree3);
-            this->Params[2]->workLoad->push_back(tree->tree4);
-        }
-        if (number_of_threads >= 4) {
-	  std::cout << "4 threads\n";
-            this->Params[0]->workLoad->push_back(tree->tree1);
-            this->Params[1]->workLoad->push_back(tree->tree2);
-            this->Params[2]->workLoad->push_back(tree->tree3);
-            this->Params[3]->workLoad->push_back(tree->tree4);
-        }
+      if (number_of_threads == 1) {
+	std::cout << "1 threads\n";
+	this->Params[0]->workLoad->push_back(tree->tree1);
+	this->Params[0]->workLoad->push_back(tree->tree2);
+	this->Params[0]->workLoad->push_back(tree->tree3);
+	this->Params[0]->workLoad->push_back(tree->tree4);
+      }
+      if (number_of_threads == 2) {
+	std::cout << "2 threads\n";
+	this->Params[0]->workLoad->push_back(tree->tree1);
+	this->Params[0]->workLoad->push_back(tree->tree2);
+	this->Params[1]->workLoad->push_back(tree->tree3);
+	this->Params[1]->workLoad->push_back(tree->tree4);
+      }
+      if (number_of_threads == 3) {
+	std::cout << "3 threads\n";
+	this->Params[0]->workLoad->push_back(tree->tree1);
+	this->Params[1]->workLoad->push_back(tree->tree2);
+	this->Params[2]->workLoad->push_back(tree->tree3);
+	this->Params[2]->workLoad->push_back(tree->tree4);
+      }
+      if (number_of_threads >= 4) {
+	std::cout << "4 threads\n";
+	this->Params[0]->workLoad->push_back(tree->tree1);
+	this->Params[1]->workLoad->push_back(tree->tree2);
+	this->Params[2]->workLoad->push_back(tree->tree3);
+	this->Params[3]->workLoad->push_back(tree->tree4);
+      }
     }
   }
 
@@ -247,11 +247,19 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
    
   }
 
-  if(choice == OPENCL) {
+  if(heatmapFlag) {
+    px = (float *) malloc(sizeof(float) * length);
+    py = (float *) malloc(sizeof(float) * length);
+   
+    for(int i = 0; i<length; i++) {
+      px[i] = static_cast<int>(agents[i]->getDesiredX());
+      py[i] = static_cast<int>(agents[i]->getDesiredY());
+    }
+
     // ret is an error return value
     // Load the source code containing the kernel
     // and see if it succeded
-    char fileName[] = "../libpedsim/whereToGo.cl";
+    char fileName[] = "../libpedsim/heatmap.cl";
     fp = fopen(fileName,"r");
     if(fp == NULL) {
       fprintf(stderr,"Failed to load kernel, fp == NULL\n");
@@ -292,18 +300,23 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
       exit(1);
     }
 
+    // Create contogious heatMap and initialize it to 0
+    heatMapContogious = (int*) malloc(sizeof(int)*WIDTH*HEIGHT);
+    rowSize = (int*) malloc(sizeof(int));
+    *rowSize = WIDTH;
+    for(int i = 0; i < WIDTH*HEIGHT; i++) {
+      heatMapContogious[i] = 0;
+    }
     // Create memorybuffer for the GPU
-    size_t memoryToAllocate = sizeof(float)*length;
+    size_t memoryToAllocate = sizeof(int)*length;
+    size_t heatMapSize = sizeof(int)*WIDTH*HEIGHT;
+    size_t row_size = sizeof(int);
     memobjx = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
     memobjy = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
-    memobjwx = clCreateBuffer(context, CL_MEM_READ_ONLY,memoryToAllocate, NULL, &ret);
-    memobjwy = clCreateBuffer(context, CL_MEM_READ_ONLY,memoryToAllocate, NULL, &ret);
-    memobjrArr = clCreateBuffer(context, CL_MEM_READ_ONLY,memoryToAllocate, NULL, &ret);
-    memobjReachedArr = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
-
-    // Creates a program object for a context, and loads the source
-    // code specified by the text strings(source_str) in the strings array into 
-    // the program object (program). 
+    memobjRowSize = clCreateBuffer(context, CL_MEM_READ_WRITE,row_size, NULL, &ret);
+    memobjHeatmap = clCreateBuffer(context, CL_MEM_READ_WRITE,heatMapSize, NULL, &ret);
+    
+    // Create the program
     program = clCreateProgramWithSource(context, 1, (const char **)&source_str,
 					(const size_t *)&source_size, &ret);
     if(program == NULL) {
@@ -315,17 +328,115 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     ret = clBuildProgram(program, 1, &device_id, NULL, NULL, NULL);
     if(ret != CL_SUCCESS) {
       cout << ret << "\n";
+
+      size_t log_size;
+    clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
+ 
+    // Allocate memory for the log
+    char *log = (char *) malloc(log_size);
+ 
+    // Get the log
+    clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
+ 
+    // Print the log
+    printf("%s\n", log);
+      
       fprintf(stderr,"Failed to build program\n");
       exit(1);
     }
 
+    // Load the program to the kernel and loads the argument to the kernels
+    createHeatmapkernel = clCreateKernel(program, "heatmap", &ret);
+    if(createHeatmapkernel==NULL){
+      fprintf(stderr,"Failed to create kernel\n");
+      exit(1);
+    }
+    if(clSetKernelArg(createHeatmapkernel, 0, sizeof(cl_mem), (void *)&memobjHeatmap) != CL_SUCCESS || 
+       clSetKernelArg(createHeatmapkernel, 1, sizeof(cl_mem), (void *)&memobjRowSize) != CL_SUCCESS ||
+       clSetKernelArg(createHeatmapkernel, 2, sizeof(cl_mem), (void *)&memobjx) != CL_SUCCESS ||
+       clSetKernelArg(createHeatmapkernel, 3, sizeof(cl_mem), (void *)&memobjy) != CL_SUCCESS) {
+      fprintf(stderr,"Failed to set kernel parameters\n");
+      exit(1);
+    }
+
+    /* Write starting positions to device memory */
+    clEnqueueWriteBuffer(command_queue,memobjHeatmap,CL_FALSE,0,heatMapSize,heatMapContogious,0,NULL,NULL);
+    clEnqueueWriteBuffer(command_queue,memobjRowSize,CL_FALSE,0,sizeof(int),rowSize,0,NULL,NULL);
+    clEnqueueWriteBuffer(command_queue,memobjx,CL_FALSE,0,sizeof(int)*length,px,0,NULL,NULL);
+    clEnqueueWriteBuffer(command_queue,memobjy,CL_FALSE,0,sizeof(int)*length,py,0,NULL,NULL);
+  }
+  
+  if(choice == OPENCL) {
+    // ret is an error return value
+    // Load the source code containing the kernel
+    // and see if it succeded
+    char fileName[] = "../libpedsim/whereToGo.cl";
+    fp = fopen(fileName,"r");
+    if(fp == NULL) {
+      fprintf(stderr,"Failed to load kernel, fp == NULL\n");
+      exit(1);
+    }
+    // allocate string and copy file fp data to
+    // source_str
+    source_str = (char*)malloc(MAX_SOURCE_SIZE);
+    source_size = fread(source_str,1, MAX_SOURCE_SIZE, fp);
+    fclose(fp);
+    // get platform and device info
+    ret = clGetPlatformIDs(1, &platform_id, &ret_num_platforms);
+    if(ret != CL_SUCCESS) {
+      fprintf(stderr,"Failed to get platformID\n");
+      exit(1);
+    }
+    ret_num_devices = CL_DEVICE_MAX_COMPUTE_UNITS;
+    ret = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_DEFAULT, 1, &device_id, &ret_num_devices);
+    if(ret != CL_SUCCESS) {
+      fprintf(stderr,"Failed to get deviceID\n");
+      exit(1);
+    }
+    // Create OpenCL context
+    context = clCreateContext(NULL, 1, &device_id, NULL, NULL, &ret);
+    if(context == NULL) {
+      fprintf(stderr,"failed to create context\n");
+      cout << context << "\n";
+      exit(1);
+    }
+    // create commando queue
+    command_queue = clCreateCommandQueue(context,device_id,0,&ret);
+    if (command_queue == NULL) {
+      fprintf(stderr,"Failed to create command_queue\n");
+      exit(1);
+    }
+    // Create memorybuffer for the GPU
+    size_t memoryToAllocate = sizeof(float)*length;
+    memobjx = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
+    memobjy = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
+    memobjwx = clCreateBuffer(context, CL_MEM_READ_ONLY,memoryToAllocate, NULL, &ret);
+    memobjwy = clCreateBuffer(context, CL_MEM_READ_ONLY,memoryToAllocate, NULL, &ret);
+    memobjrArr = clCreateBuffer(context, CL_MEM_READ_ONLY,memoryToAllocate, NULL, &ret);
+    memobjReachedArr = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
+    // Creates a program object for a context, and loads the source
+    // code specified by the text strings(source_str) in the strings array into
+    // the program object (program).
+    program = clCreateProgramWithSource(context, 1, (const char **)&source_str,
+					(const size_t *)&source_size, &ret);
+    if(program == NULL) {
+      fprintf(stderr,"Failed to create program\n");
+      exit(1);
+    }
+    // Build Kernel Program. Compile the program into an executabe binary
+    ret = clBuildProgram(program, 1, &device_id, NULL, NULL, NULL);
+    if(ret != CL_SUCCESS) {
+      cout << ret << "\n";
+      fprintf(stderr,"Failed to build program\n");
+      exit(1);
+    }
     // Load the program to the kernel and loads the argument to the kernels
     kernel = clCreateKernel(program, "whereToGo", &ret);
     if(kernel==NULL){
       fprintf(stderr,"Failed to create kernel\n");
       exit(1);
     }
-    if(clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&memobjx) != CL_SUCCESS|| 
+    if(clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&memobjx) != CL_SUCCESS||
        clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&memobjy) != CL_SUCCESS||
        clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *)&memobjwx)!= CL_SUCCESS||
        clSetKernelArg(kernel, 3, sizeof(cl_mem), (void *)&memobjwy)!= CL_SUCCESS||
@@ -334,7 +445,6 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
       fprintf(stderr,"Failed to set kernel parameters\n");
       exit(1);
     }
-
     /* Write starting positions to device memory */
     clEnqueueWriteBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(float)*length,px,0,NULL,NULL);
     clEnqueueWriteBuffer(command_queue,memobjy,CL_TRUE,0,sizeof(float)*length,py,0,NULL,NULL);
@@ -366,36 +476,36 @@ void* Ped::Model::threaded_tick_collision(void* parameters){
   std::vector<Ped::Ttree*> *trees = params->workLoad;
 
   while(true) {
-    #ifdef __APPLE__
+#ifdef __APPLE__
     dispatch_semaphore_wait(params->semaphore, DISPATCH_TIME_FOREVER);
-    #else
+#else
     sem_wait(&(params->semaphore));
-    #endif
+#endif
     
     int agentsUpdated = 0;    
     for (std::vector<Ped::Ttree*>::iterator i = trees->begin(); i != trees->end(); ++i) {
-        std::set<Ped::Tagent*> agents = (*i)->getAgents();
+      std::set<Ped::Tagent*> agents = (*i)->getAgents();
 
-        agentsUpdated += agents.size();
-        for (std::set<Ped::Tagent*>::iterator it = agents.begin(); it != agents.end(); ++it) {
-            Ped::Tagent* currentAgent = (*it);
-            currentAgent->whereToGo();
-            currentAgent->computeNextDesiredPosition();
-            // Search for neighboring agents
-	    params->model->doSafeMovementThreaded(currentAgent, params->leavers, trees, (*i));
-        }
+      agentsUpdated += agents.size();
+      for (std::set<Ped::Tagent*>::iterator it = agents.begin(); it != agents.end(); ++it) {
+	Ped::Tagent* currentAgent = (*it);
+	currentAgent->whereToGo();
+	currentAgent->computeNextDesiredPosition();
+	// Search for neighboring agents
+	params->model->doSafeMovementThreaded(currentAgent, params->leavers, trees, (*i));
+      }
     }
     params->model->setAgentCounter(params->idx, agentsUpdated);
-    #ifdef __APPLE__
+#ifdef __APPLE__
     dispatch_semaphore_signal(params->mainSem);
-    #else
+#else
     sem_post(&(params->mainSem));
-    #endif
+#endif
   }
 }
 
 void Ped::Model::setAgentCounter(int idx, int value) {
-    agentCounter[idx] = value;
+  agentCounter[idx] = value;
 }
 
 void Ped::Model::tick()
@@ -407,21 +517,21 @@ void Ped::Model::tick()
   case SEQ:
     { 
       for (std::vector<Ped::Tagent*>::iterator it = agents.begin(); it != agents.end(); ++it) {
-	  Ped::Tagent *agent = (*it);
-	  agent->whereToGo();
-	  agent->go();                 
-	}
+	Ped::Tagent *agent = (*it);
+	agent->whereToGo();
+	agent->go();                 
+      }
 
       break;
     }
   case COLLISIONSEQ:
     {
       for (std::vector<Ped::Tagent*>::iterator it = agents.begin(); it != agents.end(); ++it) {
-	  Ped::Tagent *agent = (*it);
-	  agent->whereToGo();
-	  agent->computeNextDesiredPosition();                 
-	  doSafeMovement(agent);	    
-	}
+	Ped::Tagent *agent = (*it);
+	agent->whereToGo();
+	agent->computeNextDesiredPosition();                 
+	doSafeMovement(agent);	    
+      }
       if(heatmapFlag) {
 	updateHeatmapSeq();
       }
@@ -441,19 +551,28 @@ void Ped::Model::tick()
     }
   case COLLISIONPTHREAD:
     {
+     
+      for(int i = 0; i<length; i++) {
+	px[i] = static_cast<int>(agents[i]->getDesiredX());
+	py[i] = static_cast<int>(agents[i]->getDesiredY());
+      }
+
+      clEnqueueWriteBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(int)*length,px,0,NULL,NULL);
+      clEnqueueWriteBuffer(command_queue,memobjy,CL_TRUE,0,sizeof(int)*length,py,0,NULL,NULL);
+      
       for(int i = 0; i < number_of_threads; i++) { 
-	#ifdef __APPLE__
+#ifdef __APPLE__
 	dispatch_semaphore_wait(this->Params[i]->mainSem, DISPATCH_TIME_FOREVER);
-        #else
+#else
 	sem_wait(&(this->Params[i]->mainSem));
-        #endif
+#endif
       }
 
       for(int i = 0; i < number_of_threads; i++) {
-          while(!(Params[i]->leavers->empty())) {
-              doSafeMovement(Params[i]->leavers->front());
-              Params[i]->leavers->pop_front();
-          }
+	while(!(Params[i]->leavers->empty())) {
+	  doSafeMovement(Params[i]->leavers->front());
+	  Params[i]->leavers->pop_front();
+	}
       }
 
       if (tickcounter >= 13) {
@@ -461,16 +580,43 @@ void Ped::Model::tick()
         tickcounter = 0;
       }
 
-      if(heatmapFlag) {
-	updateHeatmapSeq();
+      //if(heatmapFlag) {
+      //updateHeatmapSeq();
+      //}
+      // Execute OpenCL kernel as data parallel 
+      size_t global_item_size = length;
+      size_t local_item_size = 1;
+      ret = clEnqueueNDRangeKernel(command_queue, createHeatmapkernel, 1,NULL, &global_item_size,&local_item_size, 0, NULL, NULL);
+      if(ret != CL_SUCCESS) {
+	cout << "ret = " << ret << " :";
+	fprintf(stderr,"Failed to load kernels in tick\n");
+	exit(1);
       }
+       ret = clEnqueueReadBuffer(command_queue,memobjHeatmap,CL_FALSE,0,sizeof(int)*length,heatMapContogious,0,NULL,NULL);
+
+      clFinish(command_queue);
+      clFlush(command_queue);
+
+      for(int i = 0; i < WIDTH; i++){
+	for(int j = 0; j < HEIGHT; j++) {
+	  if(heatmap[i][j] > 0){
+	    printf("heatmap before %d: after :",heatmap[i][j]);
+	  }
+	  heatmap[i][j] = heatMapContogious[i*WIDTH + j];
+	  if(heatmap[i][j] > 0)
+	    {
+	      printf("%d \n",heatmap[i][j]);
+	    }
+	}
+      }
+      puts("--------");
       
       for(int i = 0; i < number_of_threads; i++) {
-	#ifdef __APPLE__
+#ifdef __APPLE__
 	dispatch_semaphore_signal(this->Params[i]->semaphore);
-        #else
+#else
 	sem_post(&(this->Params[i]->semaphore));
-        #endif        
+#endif        
       }
       tickcounter++;
 
@@ -600,11 +746,14 @@ void Ped::Model::tick()
       ret = clEnqueueReadBuffer(command_queue,memobjReachedArr,CL_FALSE,0,sizeof(float)*length,reachedArr,0,NULL,NULL);
 
       clFinish(command_queue);
-
       for(int i = 0; i < length; i++) {
 	updateAgents(i);
       }
 
+      break;
+    }
+  case HEATMAP:
+    {
       break;
     }
   default:
@@ -622,26 +771,26 @@ void  Ped::Model::doSafeMovementThreaded(Ped::Tagent *agent, std::list<Ped::Tage
     return;
   }
 
-    std::vector<std::pair<int, int> > prioritizedAlternatives;
-    std::pair<int, int> pDesired(agent->getDesiredX(), agent->getDesiredY());
-    prioritizedAlternatives.push_back(pDesired);
+  std::vector<std::pair<int, int> > prioritizedAlternatives;
+  std::pair<int, int> pDesired(agent->getDesiredX(), agent->getDesiredY());
+  prioritizedAlternatives.push_back(pDesired);
 
-    int diffX = pDesired.first - agent->getX();
-    int diffY = pDesired.second - agent->getY();
-    std::pair<int, int> p1, p2;
-    if (diffX == 0 || diffY == 0)
+  int diffX = pDesired.first - agent->getX();
+  int diffY = pDesired.second - agent->getY();
+  std::pair<int, int> p1, p2;
+  if (diffX == 0 || diffY == 0)
     {
-        // Agent wants to walk straight to North, South, West or East
-        p1 = std::make_pair(pDesired.first + diffY, pDesired.second + diffX);
-        p2 = std::make_pair(pDesired.first - diffY, pDesired.second - diffX);
+      // Agent wants to walk straight to North, South, West or East
+      p1 = std::make_pair(pDesired.first + diffY, pDesired.second + diffX);
+      p2 = std::make_pair(pDesired.first - diffY, pDesired.second - diffX);
     }
-    else {
-        // Agent wants to walk diagonally
-        p1 = std::make_pair(pDesired.first, agent->getY());
-        p2 = std::make_pair(agent->getX(), pDesired.second);
-    }
-    prioritizedAlternatives.push_back(p1);
-    prioritizedAlternatives.push_back(p2);
+  else {
+    // Agent wants to walk diagonally
+    p1 = std::make_pair(pDesired.first, agent->getY());
+    p2 = std::make_pair(agent->getX(), pDesired.second);
+  }
+  prioritizedAlternatives.push_back(p1);
+  prioritizedAlternatives.push_back(p2);
 
 
   set<Ped::Tagent *> neighbors = getNeighbors(agent->getX(), agent->getY(), 2, currentTree);
@@ -658,12 +807,12 @@ void  Ped::Model::doSafeMovementThreaded(Ped::Tagent *agent, std::list<Ped::Tage
 
     // If the current position is not yet taken by any neighbor
     if (std::find(takenPositions.begin(), takenPositions.end(), *it) == takenPositions.end()) {
-        // Set the agent's position 		
-        agent->setX((*it).first);		
-        agent->setY((*it).second);		
+      // Set the agent's position 		
+      agent->setX((*it).first);		
+      agent->setY((*it).second);		
 
-        // Update the quadtree
-        (*treehash)[agent]->moveAgent(agent);
+      // Update the quadtree
+      (*treehash)[agent]->moveAgent(agent);
 
       break;
     }

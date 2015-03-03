@@ -1,11 +1,8 @@
-#define SIZE 1024
-#define CELLSIZE 5
-#define SCALED_SIZE SIZE*CELLSIZE
-
-__kernel void createHeatmap(__global float* heatmap, __global int row_size) {
-    int row = get_global_id(0);
-    int column = get_global_id(1);
-    if(x[agent] =< SIZE || y[agent] =< SIZE) {
-        atomic_add(heatmap[x[agent] * row_size + y[agent]], 40);
-    }
+__kernel void heatmap(__global int* heatmap, __global int* row_size,__global int* x,__global int* y) {
+  int SIZE = 1024;
+  int agent = get_global_id(0);
+  if((x[agent] <= SIZE) || (y[agent] <= SIZE)) {
+    printf("update heatmap[%d][%d] agen%d\n",x[agent],y[agent],agent);
+    atom_add(&(heatmap[x[agent] * (*row_size) + y[agent]]), 40);
+  }
 }

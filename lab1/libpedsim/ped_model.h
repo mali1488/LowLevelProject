@@ -23,7 +23,7 @@ namespace Ped{
   class Tagent;
   class Ttree;
   
-  enum IMPLEMENTATION {CUDA, VECTOR, OMP, PTHREAD, SEQ, TEST, OPENCL, COLLISIONSEQ, COLLISIONPTHREAD};
+  enum IMPLEMENTATION {CUDA, VECTOR, OMP, PTHREAD, SEQ, TEST, OPENCL, COLLISIONSEQ, COLLISIONPTHREAD, HEATMAP};
 
   class Model
   {
@@ -76,7 +76,11 @@ namespace Ped{
     cl_mem memobjwy;
     cl_mem memobjrArr;
     cl_mem memobjReachedArr;
+
+    cl_mem memobjRowSize;
+    cl_mem memobjHeatmap;
     cl_program program;
+    cl_kernel createHeatmapkernel;
     cl_kernel kernel;
     cl_platform_id platform_id;
     cl_uint ret_num_devices; 
@@ -123,7 +127,8 @@ namespace Ped{
     #define SCALED_SIZE SIZE*CELLSIZE
 
     int ** heatmap;
-
+    int * heatMapContogious;
+    int * rowSize;
     // The scaled heatmap that fits to the view
     int ** scaled_heatmap;
 
