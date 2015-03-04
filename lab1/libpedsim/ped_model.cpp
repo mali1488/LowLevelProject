@@ -303,6 +303,7 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     heatMapContogious = (int *) calloc(WIDTH*HEIGHT, sizeof(int));
     //heatMapContogious = (int *) calloc(SIZE*SIZE, sizeof(int));
     scaledHeatMapContogious = (int *) calloc(SCALED_WIDTH*SCALED_HEIGHT, sizeof(int));
+    blurHeatMapContigious = (int *) calloc(SCALED_WIDTH*SCALED_HEIGHT, sizeof(int));
     //scaledHeatMapContogious = (int *) calloc(SCALED_SIZE*SCALED_SIZE, sizeof(int));
     rowSize = (int*) malloc(sizeof(int));
     *rowSize = WIDTH;
@@ -326,7 +327,8 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
 
     memobjScaleHeatmap = clCreateBuffer(context, CL_MEM_READ_WRITE,scaledMapSize, NULL, &ret);
     memobjScaledRowSize = clCreateBuffer(context, CL_MEM_READ_WRITE,row_size, NULL, &ret);
-    
+
+    memobjBlurHeatmap = clCreateBuffer(context, CL_MEM_READ_WRITE,scaledMapSize, NULL, &ret);
     // Create the program
     program = clCreateProgramWithSource(context, 1, (const char **)&source_str,
 					(const size_t *)&source_size, &ret);
@@ -360,6 +362,8 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     createHeatmapkernel = clCreateKernel(program, "heatmap", &ret);
     fadeHeatmapkernel = clCreateKernel(program, "fadeHeatmap", &ret);
     scalekernel = clCreateKernel(program, "scaleHeatmap", &ret);
+    blurkernel = clCreateKernel(program, "gaussianBlur", &ret);
+    
     if(createHeatmapkernel==NULL || fadeHeatmapkernel==NULL ||
        scalekernel==NULL){
       fprintf(stderr,"Failed to create kernel\n");
@@ -386,6 +390,12 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
       exit(1);
     }
 
+    if(clSetKernelArg(blurkernel, 0, sizeof(cl_mem), (void *)&memobjScaleHeatmap) != CL_SUCCESS ||
+       clSetKernelArg(blurkernel, 1, sizeof(cl_mem), (void *)&memobjBlurHeatmap) != CL_SUCCESS || 
+       clSetKernelArg(blurkernel, 2, sizeof(cl_mem), (void *)&memobjScaledRowSize) != CL_SUCCESS) {
+      fprintf(stderr,"aFailed to set kernel parameters\n");
+      exit(1);
+    } 
     /* Write starting positions to device memory */
     clEnqueueWriteBuffer(command_queue,memobjHeatmap,CL_FALSE,0,heatMapSize,heatMapContogious,0,NULL,NULL);
     clEnqueueWriteBuffer(command_queue,memobjScaleHeatmap,CL_FALSE,0,scaledMapSize,scaledHeatMapContogious,0,NULL,NULL);
@@ -393,6 +403,7 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     clEnqueueWriteBuffer(command_queue,memobjScaledRowSize,CL_FALSE,0,sizeof(int),scaledRowSize,0,NULL,NULL);
     clEnqueueWriteBuffer(command_queue,memobjx,CL_FALSE,0,sizeof(int)*length,xDesired,0,NULL,NULL);
     clEnqueueWriteBuffer(command_queue,memobjy,CL_FALSE,0,sizeof(int)*length,yDesired,0,NULL,NULL);
+    clEnqueueWriteBuffer(command_queue,memobjBlurHeatmap,CL_FALSE,0,heatMapSize,blurHeatMapContigious,0,NULL,NULL);	
   }
   
   if(choice == OPENCL) {
@@ -697,8 +708,25 @@ void Ped::Model::tick()
 	  }
 	}
 
+
+	ret = clEnqueueNDRangeKernel(command_queue, blurkernel, 2,NULL, global_scale_size,NULL, 0, NULL, NULL);
+	if(ret != CL_SUCCESS) {
+	  cout << "ret = " << ret << " :";
+	  fprintf(stderr,"Failed to load kernels in tick\n");
+	  exit(1);
+	}
+	clFinish(command_queue);
+	ret = clEnqueueReadBuffer(command_queue,memobjBlurHeatmap,CL_TRUE,0,sizeof(int)*SCALED_WIDTH*SCALED_HEIGHT,blurHeatMapContigious,0,NULL,NULL);
+
+	for(int y = 0; y < SCALED_HEIGHT; y++){
+	  for(int x = 0; x < SCALED_WIDTH; x++) {
+	    blurred_heatmap[y][x] = blurHeatMapContigious[y*SCALED_WIDTH + x];
+	  }
+	}
       }
-      updateHeatmapPar();      
+	
+      //updateHeatmapPar();      
+      
       for(int i = 0; i < number_of_threads; i++) {
 #ifdef __APPLE__
 	dispatch_semaphore_signal(this->Params[i]->semaphore);
