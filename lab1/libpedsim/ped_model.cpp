@@ -320,13 +320,13 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
         size_t scaledMapSize = sizeof(int)*SCALED_WIDTH*SCALED_HEIGHT;
 	//size_t scaledMapSize = sizeof(int)*SCALED_SIZE*SCALED_SIZE;
     size_t row_size = sizeof(int);
-    memobjx = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
-    memobjy = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
-    memobjRowSize = clCreateBuffer(context, CL_MEM_READ_WRITE,row_size, NULL, &ret);
+    memobjx = clCreateBuffer(context, CL_MEM_READ_ONLY,memoryToAllocate, NULL, &ret);
+    memobjy = clCreateBuffer(context, CL_MEM_READ_ONLY,memoryToAllocate, NULL, &ret);
+    memobjRowSize = clCreateBuffer(context, CL_MEM_READ_ONLY,row_size, NULL, &ret);
     memobjHeatmap = clCreateBuffer(context, CL_MEM_READ_WRITE,heatMapSize, NULL, &ret);
 
     memobjScaleHeatmap = clCreateBuffer(context, CL_MEM_READ_WRITE,scaledMapSize, NULL, &ret);
-    memobjScaledRowSize = clCreateBuffer(context, CL_MEM_READ_WRITE,row_size, NULL, &ret);
+    memobjScaledRowSize = clCreateBuffer(context, CL_MEM_READ_ONLY,row_size, NULL, &ret);
 
     memobjBlurHeatmap = clCreateBuffer(context, CL_MEM_READ_WRITE,scaledMapSize, NULL, &ret);
     // Create the program
