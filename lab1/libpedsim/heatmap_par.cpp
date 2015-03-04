@@ -69,6 +69,7 @@ void Ped::Model::updateHeatmapPar()
   
   /* <scale> */
   // Scale the data for visual representation
+  /*
   for(int y = 0; y < SIZE; y++)
   {
     for(int x = 0; x < SIZE; x++)
@@ -82,7 +83,7 @@ void Ped::Model::updateHeatmapPar()
 	}
       }
     }
-  }
+    } */
   /* </scale> */
   
   // Weights for blur filter
@@ -97,9 +98,9 @@ void Ped::Model::updateHeatmapPar()
   /* <blur> */
 #define WEIGHTSUM 273
   // Apply gaussian blurfilter		       
-  for(int i = 2;i < SCALED_SIZE - 2; i++)
+  for(int i = 2;i < SCALED_HEIGHT - 2; i++)
   {
-    for(int j = 2;j < SCALED_SIZE - 2; j++)
+    for(int j = 2;j < SCALED_WIDTH - 2; j++)
     {
       int sum = 0;
       for(int k =- 2; k < 3; k++)

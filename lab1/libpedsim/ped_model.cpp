@@ -29,8 +29,7 @@
 
 #define BALANCE_CONSTANT 2
 
-#define WIDTH 800
-#define HEIGHT 600
+
 
 struct parameters;
 
@@ -302,17 +301,25 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
 
     // Create contogious heatMap and initialize it to 0
     heatMapContogious = (int *) calloc(WIDTH*HEIGHT, sizeof(int));
+    scaledHeatMapContogious = (int *) calloc(SCALED_WIDTH*SCALED_HEIGHT, sizeof(int));
     rowSize = (int*) malloc(sizeof(int));
     *rowSize = WIDTH;
+    
+    scaledRowSize = (int*) malloc(sizeof(int));
+    *scaledRowSize = SCALED_WIDTH;
 
     // Create memorybuffer for the GPU
     size_t memoryToAllocate = sizeof(int)*length;
     size_t heatMapSize = sizeof(int)*WIDTH*HEIGHT;
+    size_t scaledMapSize = sizeof(int)*SCALED_WIDTH*SCALED_HEIGHT;
     size_t row_size = sizeof(int);
     memobjx = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
     memobjy = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
     memobjRowSize = clCreateBuffer(context, CL_MEM_READ_WRITE,row_size, NULL, &ret);
     memobjHeatmap = clCreateBuffer(context, CL_MEM_READ_WRITE,heatMapSize, NULL, &ret);
+
+    memobjScaleHeatmap = clCreateBuffer(context, CL_MEM_READ_WRITE,scaledMapSize, NULL, &ret);
+    memobjScaledRowSize = clCreateBuffer(context, CL_MEM_READ_WRITE,row_size, NULL, &ret);
     
     // Create the program
     program = clCreateProgramWithSource(context, 1, (const char **)&source_str,
@@ -346,7 +353,9 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     // Load the program to the kernel and loads the argument to the kernels
     createHeatmapkernel = clCreateKernel(program, "heatmap", &ret);
     fadeHeatmapkernel = clCreateKernel(program, "fadeHeatmap", &ret);
-    if(createHeatmapkernel==NULL){
+    scalekernel = clCreateKernel(program, "scaleHeatmap", &ret);
+    if(createHeatmapkernel==NULL || fadeHeatmapkernel==NULL ||
+       scalekernel==NULL){
       fprintf(stderr,"Failed to create kernel\n");
       exit(1);
     }
@@ -364,9 +373,18 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
       exit(1);
     }
 
+    if(clSetKernelArg(scalekernel, 0, sizeof(cl_mem), (void *)&memobjScaleHeatmap) != CL_SUCCESS ||
+       clSetKernelArg(scalekernel, 1, sizeof(cl_mem), (void *)&memobjHeatmap) != CL_SUCCESS || 
+       clSetKernelArg(scalekernel, 2, sizeof(cl_mem), (void *)&memobjScaledRowSize) != CL_SUCCESS) {
+      fprintf(stderr,"aFailed to set kernel parameters\n");
+      exit(1);
+    }
+
     /* Write starting positions to device memory */
     clEnqueueWriteBuffer(command_queue,memobjHeatmap,CL_FALSE,0,heatMapSize,heatMapContogious,0,NULL,NULL);
+    clEnqueueWriteBuffer(command_queue,memobjScaleHeatmap,CL_FALSE,0,scaledMapSize,scaledHeatMapContogious,0,NULL,NULL);
     clEnqueueWriteBuffer(command_queue,memobjRowSize,CL_FALSE,0,sizeof(int),rowSize,0,NULL,NULL);
+    clEnqueueWriteBuffer(command_queue,memobjScaledRowSize,CL_FALSE,0,sizeof(int),scaledRowSize,0,NULL,NULL);
     clEnqueueWriteBuffer(command_queue,memobjx,CL_FALSE,0,sizeof(int)*length,xDesired,0,NULL,NULL);
     clEnqueueWriteBuffer(command_queue,memobjy,CL_FALSE,0,sizeof(int)*length,yDesired,0,NULL,NULL);
   }
@@ -609,21 +627,28 @@ void Ped::Model::tick()
 	  }
 	  clEnqueueWriteBuffer(command_queue,memobjHeatmap,CL_FALSE,0,WIDTH*HEIGHT,heatMapContogious,0,NULL,NULL); */
 	const size_t global_fade_size[] = {HEIGHT, WIDTH};
+	const size_t global_scale_size[] = {SCALED_HEIGHT, SCALED_WIDTH};
+	const size_t local_fade_size[] = {1, 1};
 	size_t global_item_size = length;
 	size_t local_item_size = 1;	
 
-	ret = clEnqueueNDRangeKernel(command_queue, fadeHeatmapkernel, 2,NULL, global_fade_size,NULL, 0, NULL, NULL);
+	ret = clEnqueueNDRangeKernel(command_queue, fadeHeatmapkernel, 2,NULL, global_fade_size,local_fade_size, 0, NULL, NULL);
 	
 	ret = clEnqueueNDRangeKernel(command_queue, createHeatmapkernel, 1,NULL, &global_item_size,&local_item_size, 0, NULL, NULL);
+
+	ret = clEnqueueNDRangeKernel(command_queue, scalekernel, 2,NULL, global_scale_size,NULL, 0, NULL, NULL);
 	if(ret != CL_SUCCESS) {
 	  cout << "ret = " << ret << " :";
 	  fprintf(stderr,"Failed to load kernels in tick\n");
 	  exit(1);
 	}
 	ret = clEnqueueReadBuffer(command_queue,memobjHeatmap,CL_FALSE,0,sizeof(int)*WIDTH*HEIGHT,heatMapContogious,0,NULL,NULL);
+	
+	ret = clEnqueueReadBuffer(command_queue,memobjScaleHeatmap,CL_TRUE,0,sizeof(int)*SCALED_WIDTH*SCALED_HEIGHT,scaledHeatMapContogious,0,NULL,NULL);
 
 	clFinish(command_queue);
 
+	/*
 	for(int y = 0; y < HEIGHT; y++){
 	  for(int x = 0; x < WIDTH; x++) {
 	    if((heatmap[y][x] >= 0) && (heatmap[y][x] < heatMapContogious[y*WIDTH + x])){
@@ -633,6 +658,12 @@ void Ped::Model::tick()
 	    } else {
 	      heatmap[y][x] = heatMapContogious[y*WIDTH + x];
 	    }
+	  }
+	  } */
+
+	for(int y = 0; y < SCALED_HEIGHT; y++){
+	  for(int x = 0; x < SCALED_WIDTH; x++) {
+	      scaled_heatmap[y][x] = scaledHeatMapContogious[y*SCALED_WIDTH + x];
 	  }
 	}
 

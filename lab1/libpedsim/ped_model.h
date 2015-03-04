@@ -78,10 +78,14 @@ namespace Ped{
     cl_mem memobjReachedArr;
 
     cl_mem memobjRowSize;
+    cl_mem memobjScaledRowSize;
     cl_mem memobjHeatmap;
+    cl_mem memobjScaleHeatmap;
     cl_program program;
     cl_kernel createHeatmapkernel;
     cl_kernel fadeHeatmapkernel;
+    cl_kernel scalekernel;
+    cl_kernel blurkernel;
     cl_kernel kernel;
     cl_platform_id platform_id;
     cl_uint ret_num_devices; 
@@ -123,17 +127,25 @@ namespace Ped{
     ////////////
     /// THIS IS NEW
     ///////////////////////////////////////////////
+    #define WIDTH 800
+#define HEIGHT 600
+
     #define SIZE 1024
     #define CELLSIZE 5
     #define SCALED_SIZE SIZE*CELLSIZE
 
+    #define SCALED_WIDTH WIDTH*CELLSIZE
+    #define SCALED_HEIGHT HEIGHT*CELLSIZE
+
     int ** heatmap;
     int * heatMapContogious;
+    int * scaledHeatMapContogious;
     int * rowSize;
     int * xDesired;
     int * yDesired;
     // The scaled heatmap that fits to the view
     int ** scaled_heatmap;
+    int * scaledRowSize;
 
     // The final heatmap: blurred and scaled to fit the view
     int ** blurred_heatmap;

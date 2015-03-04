@@ -16,12 +16,12 @@ __kernel void heatmap(__global int* heatmap, __global int* row_size,__global int
 
 
 /* Spawn a thread per cell i heatmap */
-/*
 __kernel void scaleHeatmap(__global int* scaledHeatmap, __global int* heatmap, __global int *row_size) {
-    int row = get_global_id(0);
-    int column = get_global_id(1);
-    scaledHeatmap[row * CELLSIZE * row_size + column * CELLSIZE] = heatmap[row * (*row_size) + column];
-    } */
+  int row = get_global_id(0);
+  int column = get_global_id(1);
+  int CELLSIZE = 5;
+  scaledHeatmap[row * (*row_size) + column] = heatmap[row/5 * (*row_size) + column/5];
+}
 
 /*
   const int w[5][5] = {
