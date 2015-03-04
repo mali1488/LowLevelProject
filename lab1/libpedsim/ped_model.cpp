@@ -639,6 +639,7 @@ void Ped::Model::tick()
 	//const size_t global_fade_size[] = {SIZE, SIZE};
 	const size_t global_scale_size[] = {SCALED_HEIGHT, SCALED_WIDTH};
 	const size_t local_fade_size[] = {1, 1};
+	const size_t local_blur_size[] = {5, 5};
 	size_t global_item_size = length;
 	size_t local_item_size = 1;	
 
@@ -655,7 +656,7 @@ void Ped::Model::tick()
 	  exit(1);
 	}
 
-	ret = clEnqueueNDRangeKernel(command_queue, blurkernel, 2,NULL, global_scale_size,NULL, 0, NULL, NULL);
+	ret = clEnqueueNDRangeKernel(command_queue, blurkernel, 2,NULL, global_scale_size,local_blur_size, 0, NULL, NULL);
 	if(ret != CL_SUCCESS) {
 	  cout << "ret = " << ret << " :";
 	  fprintf(stderr,"Failed to load kernels in tick\n");
@@ -664,6 +665,7 @@ void Ped::Model::tick()
 	clFinish(command_queue);
 	ret = clEnqueueReadBuffer(command_queue,memobjBlurHeatmap,CL_TRUE,0,sizeof(int)*SCALED_WIDTH*SCALED_HEIGHT,blurHeatMapContigious,0,NULL,NULL);
 
+	
 	for(int y = 0; y < SCALED_HEIGHT; y++){
 	  for(int x = 0; x < SCALED_WIDTH; x++) {
 	    blurred_heatmap[y][x] = blurHeatMapContigious[y*SCALED_WIDTH + x];

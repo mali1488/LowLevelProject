@@ -32,11 +32,31 @@ __constant int w[5][5] = {
   {4,16,26,16,4},
   {1,4,7,4,1}
 };
+
 __kernel void gaussianBlur(__global int* scaledHeatmap, __global int* blurHeatmap ,__global int *row_size) {
   int row = get_global_id(0);
   int column = get_global_id(1);
   int sum = 0;
   int WEIGHTSUM = 273;
+  __local int localBuffer[1024];
+  int localRow = get_local_id(0);
+  int localColumn = get_local_id(1);
+  for (int k = -2; k < 3; k++) {
+    for (int l = -2; l < 3; l++) {
+      localBuffer[(localRow * (*row_size) + k) + (localColumn + l)] = scaledHeatmap[(row * (*row_size) + k) + (column + l)];
+      sum += w[2 + k][2 + l] * localBuffer[(localRow * (*row_size) + k) + (localColumn + l)];
+    }
+  }
+  sum = sum/WEIGHTSUM;
+  blurHeatmap[row * (*row_size) + column] = 0x00FF0000 | sum<<24;
+}
+
+/*__kernel void gaussianBlur(__global int* scaledHeatmap, __global int* blurHeatmap ,__global int *row_size) {
+  int row = get_global_id(0);
+  int column = get_global_id(1);
+  int sum = 0;
+  int WEIGHTSUM = 273;
+  __local int localBuffer[1024];
   for (int k = -2; k < 3; k++) {
     for (int l = -2; l < 3; l++) {
       sum += w[2 + k][2 + l] * scaledHeatmap[(row * (*row_size) + k) + (column + l)];
@@ -44,4 +64,4 @@ __kernel void gaussianBlur(__global int* scaledHeatmap, __global int* blurHeatma
   }
   sum = sum/WEIGHTSUM;
   blurHeatmap[row * (*row_size) + column] = 0x00FF0000 | sum<<24;
-}
+  }*/
