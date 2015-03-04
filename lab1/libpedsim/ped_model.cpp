@@ -300,24 +300,24 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     }
 
     // Create contogious heatMap and initialize it to 0
-    //heatMapContogious = (int *) calloc(WIDTH*HEIGHT, sizeof(int));
-    heatMapContogious = (int *) calloc(SIZE*SIZE, sizeof(int));
-    //scaledHeatMapContogious = (int *) calloc(SCALED_WIDTH*SCALED_HEIGHT, sizeof(int));
-    scaledHeatMapContogious = (int *) calloc(SCALED_SIZE*SCALED_SIZE, sizeof(int));
+    heatMapContogious = (int *) calloc(WIDTH*HEIGHT, sizeof(int));
+    //heatMapContogious = (int *) calloc(SIZE*SIZE, sizeof(int));
+    scaledHeatMapContogious = (int *) calloc(SCALED_WIDTH*SCALED_HEIGHT, sizeof(int));
+    //scaledHeatMapContogious = (int *) calloc(SCALED_SIZE*SCALED_SIZE, sizeof(int));
     rowSize = (int*) malloc(sizeof(int));
-    //*rowSize = WIDTH;
-    *rowSize = SIZE;
+    *rowSize = WIDTH;
+    //*rowSize = SIZE;
     
     scaledRowSize = (int*) malloc(sizeof(int));
-    *scaledRowSize = SCALED_SIZE;
-    //*scaledRowSize = SCALED_WIDTH;
+    //*scaledRowSize = SCALED_SIZE;
+    *scaledRowSize = SCALED_WIDTH;
 
     // Create memorybuffer for the GPU
     size_t memoryToAllocate = sizeof(int)*length;
-    //    size_t heatMapSize = sizeof(int)*WIDTH*HEIGHT;
-    size_t heatMapSize = sizeof(int)*SIZE*SIZE;
-    //    size_t scaledMapSize = sizeof(int)*SCALED_WIDTH*SCALED_HEIGHT;
-    size_t scaledMapSize = sizeof(int)*SCALED_SIZE*SCALED_SIZE;
+        size_t heatMapSize = sizeof(int)*WIDTH*HEIGHT;
+    //size_t heatMapSize = sizeof(int)*SIZE*SIZE;
+        size_t scaledMapSize = sizeof(int)*SCALED_WIDTH*SCALED_HEIGHT;
+	//size_t scaledMapSize = sizeof(int)*SCALED_SIZE*SCALED_SIZE;
     size_t row_size = sizeof(int);
     memobjx = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
     memobjy = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
@@ -633,9 +633,9 @@ void Ped::Model::tick()
 	  }
 	  clEnqueueWriteBuffer(command_queue,memobjHeatmap,CL_FALSE,0,WIDTH*HEIGHT,heatMapContogious,0,NULL,NULL); */
 
-	//const size_t global_fade_size[] = {HEIGHT, WIDTH};
-	const size_t global_fade_size[] = {SIZE, SIZE};
-	const size_t global_scale_size[] = {SCALED_SIZE, SCALED_SIZE};
+	const size_t global_fade_size[] = {HEIGHT, WIDTH};
+	//const size_t global_fade_size[] = {SIZE, SIZE};
+	const size_t global_scale_size[] = {SCALED_HEIGHT, SCALED_WIDTH};
 	const size_t local_fade_size[] = {1, 1};
 	size_t global_item_size = length;
 	size_t local_item_size = 1;	
@@ -654,11 +654,11 @@ void Ped::Model::tick()
 	}
 	clFinish(command_queue);
 
-	//ret = clEnqueueReadBuffer(command_queue,memobjHeatmap,CL_FALSE,0,sizeof(int)*WIDTH*HEIGHT,heatMapContogious,0,NULL,NULL);
-	ret = clEnqueueReadBuffer(command_queue,memobjHeatmap,CL_FALSE,0,sizeof(int)*SIZE*SIZE,heatMapContogious,0,NULL,NULL);
+	ret = clEnqueueReadBuffer(command_queue,memobjHeatmap,CL_FALSE,0,sizeof(int)*WIDTH*HEIGHT,heatMapContogious,0,NULL,NULL);
+	//ret = clEnqueueReadBuffer(command_queue,memobjHeatmap,CL_FALSE,0,sizeof(int)*SIZE*SIZE,heatMapContogious,0,NULL,NULL);
 	
-	//ret = clEnqueueReadBuffer(command_queue,memobjScaleHeatmap,CL_TRUE,0,sizeof(int)*SCALED_WIDTH*SCALED_HEIGHT,scaledHeatMapContogious,0,NULL,NULL);
-	ret = clEnqueueReadBuffer(command_queue,memobjScaleHeatmap,CL_TRUE,0,sizeof(int)*SCALED_SIZE*SCALED_SIZE,scaledHeatMapContogious,0,NULL,NULL);
+	ret = clEnqueueReadBuffer(command_queue,memobjScaleHeatmap,CL_TRUE,0,sizeof(int)*SCALED_WIDTH*SCALED_HEIGHT,scaledHeatMapContogious,0,NULL,NULL);
+	//ret = clEnqueueReadBuffer(command_queue,memobjScaleHeatmap,CL_TRUE,0,sizeof(int)*SCALED_SIZE*SCALED_SIZE,scaledHeatMapContogious,0,NULL,NULL);
 
 	clFinish(command_queue);
 
@@ -681,19 +681,19 @@ void Ped::Model::tick()
 
       }
 	*/
-	for(int y = 0; y < SIZE; y++){
-	  for(int x = 0; x < SIZE; x++) {
-	    heatmap[y][x] = heatMapContogious[y*SIZE + x];
+	for(int y = 0; y < HEIGHT; y++){
+	  for(int x = 0; x < WIDTH; x++) {
+	    heatmap[y][x] = heatMapContogious[y*WIDTH + x];
 	    
 	  }
 	}
 	
-	for(int y = 0; y < SCALED_SIZE; y++){
-	  for(int x = 0; x < SCALED_SIZE; x++) {
-	    if (scaledHeatMapContogious[y*SCALED_SIZE +x] > 0) {
+	for(int y = 0; y < SCALED_HEIGHT; y++){
+	  for(int x = 0; x < SCALED_WIDTH; x++) {
+	    if (scaledHeatMapContogious[y*SCALED_HEIGHT +x] > 0) {
 	      //printf("pos: %d, %d\n", x, y);
 	    }
-	    scaled_heatmap[y][x] = scaledHeatMapContogious[y*SCALED_SIZE + x];
+	    scaled_heatmap[y][x] = scaledHeatMapContogious[y*SCALED_WIDTH + x];
 	  }
 	}
 
