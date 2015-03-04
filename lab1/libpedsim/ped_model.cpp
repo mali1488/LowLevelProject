@@ -591,8 +591,15 @@ void Ped::Model::tick()
     }
   case COLLISIONPTHREAD:
     {
-      if(heatmapFlag) {
-	
+      for(int i = 0; i < number_of_threads; i++) { 
+#ifdef __APPLE__
+	dispatch_semaphore_wait(this->Params[i]->mainSem, DISPATCH_TIME_FOREVER);
+#else
+	sem_wait(&(this->Params[i]->mainSem));
+#endif
+      }
+      
+      if(heatmapFlag) {	
 	for(int i = 0; i<length; i++) {
 	  xDesired[i] = static_cast<int>(agents[i]->getDesiredX());
 	  yDesired[i] = static_cast<int>(agents[i]->getDesiredY());
@@ -601,14 +608,6 @@ void Ped::Model::tick()
 
 	clEnqueueWriteBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(int)*length,xDesired,0,NULL,NULL);
 	clEnqueueWriteBuffer(command_queue,memobjy,CL_TRUE,0,sizeof(int)*length,yDesired,0,NULL,NULL);
-      }
-      
-      for(int i = 0; i < number_of_threads; i++) { 
-#ifdef __APPLE__
-	dispatch_semaphore_wait(this->Params[i]->mainSem, DISPATCH_TIME_FOREVER);
-#else
-	sem_wait(&(this->Params[i]->mainSem));
-#endif
       }
 
       for(int i = 0; i < number_of_threads; i++) {
@@ -623,27 +622,19 @@ void Ped::Model::tick()
         tickcounter = 0;
       }
 
+      for(int i = 0; i < number_of_threads; i++) {
+#ifdef __APPLE__
+	dispatch_semaphore_signal(this->Params[i]->semaphore);
+#else
+	sem_post(&(this->Params[i]->semaphore));
+#endif        
+      }
+
       //if(heatmapFlag) {
       //updateHeatmapSeq();
       //}
       // Execute OpenCL kernel as data parallel 
       if(heatmapFlag) {
-	/* 
-	   // sequential fade
-	for(int x = 0; x < SIZE; x++) {
-	  for(int y = 0; y < SIZE; y++)
-	    {
-	      // heat fades
-	      heatmap[y][x] *= 0.80;
-	    }
-	}
-	for(int y = 0; y < HEIGHT; y++){
-	  for(int x = 0; x < WIDTH; x++) {
-	    heatMapContogious[y*WIDTH + x] = heatmap[y][x];
-	  }
-	  }
-	  clEnqueueWriteBuffer(command_queue,memobjHeatmap,CL_FALSE,0,WIDTH*HEIGHT,heatMapContogious,0,NULL,NULL); */
-
 	const size_t global_fade_size[] = {HEIGHT, WIDTH};
 	//const size_t global_fade_size[] = {SIZE, SIZE};
 	const size_t global_scale_size[] = {SCALED_HEIGHT, SCALED_WIDTH};
@@ -663,51 +654,6 @@ void Ped::Model::tick()
 	  fprintf(stderr,"Failed to load kernels in tick\n");
 	  exit(1);
 	}
-	clFinish(command_queue);
-
-	ret = clEnqueueReadBuffer(command_queue,memobjHeatmap,CL_FALSE,0,sizeof(int)*WIDTH*HEIGHT,heatMapContogious,0,NULL,NULL);
-	//ret = clEnqueueReadBuffer(command_queue,memobjHeatmap,CL_FALSE,0,sizeof(int)*SIZE*SIZE,heatMapContogious,0,NULL,NULL);
-	
-	ret = clEnqueueReadBuffer(command_queue,memobjScaleHeatmap,CL_TRUE,0,sizeof(int)*SCALED_WIDTH*SCALED_HEIGHT,scaledHeatMapContogious,0,NULL,NULL);
-	//ret = clEnqueueReadBuffer(command_queue,memobjScaleHeatmap,CL_TRUE,0,sizeof(int)*SCALED_SIZE*SCALED_SIZE,scaledHeatMapContogious,0,NULL,NULL);
-
-	clFinish(command_queue);
-
-	/*
-	for(int y = 0; y < HEIGHT; y++){
-	  for(int x = 0; x < WIDTH; x++) {
-	      heatmap[y][x] = heatMapContogious[y*WIDTH + x];
-
-	  }
-	  }
-	
-	for(int y = 0; y < SCALED_HEIGHT; y++){
-	  for(int x = 0; x < SCALED_WIDTH; x++) {
-	    if (scaledHeatMapContogious[y*SCALED_WIDTH +x] > 0) {
-	      printf("pos: %d, %d\n", x, y);
-	    }
-	    scaled_heatmap[y][x] = scaledHeatMapContogious[y*SCALED_WIDTH + x];
-	  }
-	}
-
-      }
-	*/
-	for(int y = 0; y < HEIGHT; y++){
-	  for(int x = 0; x < WIDTH; x++) {
-	    heatmap[y][x] = heatMapContogious[y*WIDTH + x];
-	    
-	  }
-	}
-	
-	for(int y = 0; y < SCALED_HEIGHT; y++){
-	  for(int x = 0; x < SCALED_WIDTH; x++) {
-	    if (scaledHeatMapContogious[y*SCALED_HEIGHT +x] > 0) {
-	      //printf("pos: %d, %d\n", x, y);
-	    }
-	    scaled_heatmap[y][x] = scaledHeatMapContogious[y*SCALED_WIDTH + x];
-	  }
-	}
-
 
 	ret = clEnqueueNDRangeKernel(command_queue, blurkernel, 2,NULL, global_scale_size,NULL, 0, NULL, NULL);
 	if(ret != CL_SUCCESS) {
@@ -725,15 +671,7 @@ void Ped::Model::tick()
 	}
       }
 	
-      //updateHeatmapPar();      
       
-      for(int i = 0; i < number_of_threads; i++) {
-#ifdef __APPLE__
-	dispatch_semaphore_signal(this->Params[i]->semaphore);
-#else
-	sem_post(&(this->Params[i]->semaphore));
-#endif        
-      }
       tickcounter++;
 
       break;
