@@ -12,8 +12,8 @@ void Ped::Model::setupHeatmapSeq()
   
   heatmap = (int**) malloc(SIZE*sizeof(int*));
 
-  scaled_heatmap = (int**) malloc(SCALED_SIZE*sizeof(int*));
-  blurred_heatmap = (int**) malloc(SCALED_SIZE*sizeof(int*));
+  scaled_heatmap = (int**) malloc(SCALED_SIZE*SCALED_SIZE*sizeof(int*));
+  blurred_heatmap = (int**) malloc(SCALED_SIZE*SCALED_SIZE*sizeof(int*));
 
   for(int i = 0; i < SIZE; i++)
   {

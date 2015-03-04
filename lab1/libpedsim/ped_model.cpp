@@ -300,18 +300,24 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     }
 
     // Create contogious heatMap and initialize it to 0
-    heatMapContogious = (int *) calloc(WIDTH*HEIGHT, sizeof(int));
-    scaledHeatMapContogious = (int *) calloc(SCALED_WIDTH*SCALED_HEIGHT, sizeof(int));
+    //heatMapContogious = (int *) calloc(WIDTH*HEIGHT, sizeof(int));
+    heatMapContogious = (int *) calloc(SIZE*SIZE, sizeof(int));
+    //scaledHeatMapContogious = (int *) calloc(SCALED_WIDTH*SCALED_HEIGHT, sizeof(int));
+    scaledHeatMapContogious = (int *) calloc(SCALED_SIZE*SCALED_SIZE, sizeof(int));
     rowSize = (int*) malloc(sizeof(int));
-    *rowSize = WIDTH;
+    //*rowSize = WIDTH;
+    *rowSize = SIZE;
     
     scaledRowSize = (int*) malloc(sizeof(int));
-    *scaledRowSize = SCALED_WIDTH;
+    *scaledRowSize = SCALED_SIZE;
+    //*scaledRowSize = SCALED_WIDTH;
 
     // Create memorybuffer for the GPU
     size_t memoryToAllocate = sizeof(int)*length;
-    size_t heatMapSize = sizeof(int)*WIDTH*HEIGHT;
-    size_t scaledMapSize = sizeof(int)*SCALED_WIDTH*SCALED_HEIGHT;
+    //    size_t heatMapSize = sizeof(int)*WIDTH*HEIGHT;
+    size_t heatMapSize = sizeof(int)*SIZE*SIZE;
+    //    size_t scaledMapSize = sizeof(int)*SCALED_WIDTH*SCALED_HEIGHT;
+    size_t scaledMapSize = sizeof(int)*SCALED_SIZE*SCALED_SIZE;
     size_t row_size = sizeof(int);
     memobjx = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
     memobjy = clCreateBuffer(context, CL_MEM_READ_WRITE,memoryToAllocate, NULL, &ret);
@@ -575,11 +581,11 @@ void Ped::Model::tick()
   case COLLISIONPTHREAD:
     {
       if(heatmapFlag) {
-	puts("tick");
+	
 	for(int i = 0; i<length; i++) {
 	  xDesired[i] = static_cast<int>(agents[i]->getDesiredX());
 	  yDesired[i] = static_cast<int>(agents[i]->getDesiredY());
-	  printf("p[%d] = %d, y[%d] = %d\n",i,xDesired[i],i,yDesired[i]);
+	  //printf("p[%d] = %d, y[%d] = %d\n",i,xDesired[i],i,yDesired[i]);
 	}
 
 	clEnqueueWriteBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(int)*length,xDesired,0,NULL,NULL);
@@ -626,15 +632,19 @@ void Ped::Model::tick()
 	  }
 	  }
 	  clEnqueueWriteBuffer(command_queue,memobjHeatmap,CL_FALSE,0,WIDTH*HEIGHT,heatMapContogious,0,NULL,NULL); */
-	const size_t global_fade_size[] = {HEIGHT, WIDTH};
-	const size_t global_scale_size[] = {SCALED_HEIGHT, SCALED_WIDTH};
+
+	//const size_t global_fade_size[] = {HEIGHT, WIDTH};
+	const size_t global_fade_size[] = {SIZE, SIZE};
+	const size_t global_scale_size[] = {SCALED_SIZE, SCALED_SIZE};
 	const size_t local_fade_size[] = {1, 1};
 	size_t global_item_size = length;
 	size_t local_item_size = 1;	
 
 	ret = clEnqueueNDRangeKernel(command_queue, fadeHeatmapkernel, 2,NULL, global_fade_size,local_fade_size, 0, NULL, NULL);
+	clFinish(command_queue);
 	
 	ret = clEnqueueNDRangeKernel(command_queue, createHeatmapkernel, 1,NULL, &global_item_size,&local_item_size, 0, NULL, NULL);
+	clFinish(command_queue);
 
 	ret = clEnqueueNDRangeKernel(command_queue, scalekernel, 2,NULL, global_scale_size,NULL, 0, NULL, NULL);
 	if(ret != CL_SUCCESS) {
@@ -642,34 +652,53 @@ void Ped::Model::tick()
 	  fprintf(stderr,"Failed to load kernels in tick\n");
 	  exit(1);
 	}
-	ret = clEnqueueReadBuffer(command_queue,memobjHeatmap,CL_FALSE,0,sizeof(int)*WIDTH*HEIGHT,heatMapContogious,0,NULL,NULL);
+	clFinish(command_queue);
+
+	//ret = clEnqueueReadBuffer(command_queue,memobjHeatmap,CL_FALSE,0,sizeof(int)*WIDTH*HEIGHT,heatMapContogious,0,NULL,NULL);
+	ret = clEnqueueReadBuffer(command_queue,memobjHeatmap,CL_FALSE,0,sizeof(int)*SIZE*SIZE,heatMapContogious,0,NULL,NULL);
 	
-	ret = clEnqueueReadBuffer(command_queue,memobjScaleHeatmap,CL_TRUE,0,sizeof(int)*SCALED_WIDTH*SCALED_HEIGHT,scaledHeatMapContogious,0,NULL,NULL);
+	//ret = clEnqueueReadBuffer(command_queue,memobjScaleHeatmap,CL_TRUE,0,sizeof(int)*SCALED_WIDTH*SCALED_HEIGHT,scaledHeatMapContogious,0,NULL,NULL);
+	ret = clEnqueueReadBuffer(command_queue,memobjScaleHeatmap,CL_TRUE,0,sizeof(int)*SCALED_SIZE*SCALED_SIZE,scaledHeatMapContogious,0,NULL,NULL);
 
 	clFinish(command_queue);
 
 	/*
 	for(int y = 0; y < HEIGHT; y++){
 	  for(int x = 0; x < WIDTH; x++) {
-	    if((heatmap[y][x] >= 0) && (heatmap[y][x] < heatMapContogious[y*WIDTH + x])){
-	      printf("heatmap[%d][%d] before %d: ", y, x, heatmap[y][x]);
 	      heatmap[y][x] = heatMapContogious[y*WIDTH + x];
-	      printf("heatmap[%d][%d] after : %d \n", y, x, heatmap[y][x]);
-	    } else {
-	      heatmap[y][x] = heatMapContogious[y*WIDTH + x];
-	    }
-	  }
-	  } */
 
+	  }
+	  }
+	
 	for(int y = 0; y < SCALED_HEIGHT; y++){
 	  for(int x = 0; x < SCALED_WIDTH; x++) {
-	      scaled_heatmap[y][x] = scaledHeatMapContogious[y*SCALED_WIDTH + x];
+	    if (scaledHeatMapContogious[y*SCALED_WIDTH +x] > 0) {
+	      printf("pos: %d, %d\n", x, y);
+	    }
+	    scaled_heatmap[y][x] = scaledHeatMapContogious[y*SCALED_WIDTH + x];
 	  }
 	}
 
-	updateHeatmapPar();
       }
-      
+	*/
+	for(int y = 0; y < SIZE; y++){
+	  for(int x = 0; x < SIZE; x++) {
+	    heatmap[y][x] = heatMapContogious[y*SIZE + x];
+	    
+	  }
+	}
+	
+	for(int y = 0; y < SCALED_SIZE; y++){
+	  for(int x = 0; x < SCALED_SIZE; x++) {
+	    if (scaledHeatMapContogious[y*SCALED_SIZE +x] > 0) {
+	      //printf("pos: %d, %d\n", x, y);
+	    }
+	    scaled_heatmap[y][x] = scaledHeatMapContogious[y*SCALED_SIZE + x];
+	  }
+	}
+
+      }
+      updateHeatmapPar();      
       for(int i = 0; i < number_of_threads; i++) {
 #ifdef __APPLE__
 	dispatch_semaphore_signal(this->Params[i]->semaphore);
