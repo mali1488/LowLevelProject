@@ -5,9 +5,10 @@ __kernel void fadeHeatmap(__global int* heatmap, __global int* row_size) {
 }
 
 __kernel void heatmap(__global int* heatmap, __global int* row_size,__global int* x,__global int* y) {
-  int SIZE = 1024;
+  int WIDTH = 800;
+  int HEIGHT = 600;
   int agent = get_global_id(0);
-  if((x[agent] >= 0) && (x[agent] <= SIZE) && (y[agent] <= SIZE) && (y[agent] >= 0)) {
+  if((x[agent] >= 0) && (x[agent] <= WIDTH) && (y[agent] <= HEIGHT) && (y[agent] >= 0)) {
     atomic_add(&(heatmap[y[agent] * (*row_size) + x[agent]]), 40);
   }
 
