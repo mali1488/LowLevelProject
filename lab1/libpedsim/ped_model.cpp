@@ -29,8 +29,6 @@
 
 #define BALANCE_CONSTANT 2
 
-
-
 struct parameters;
 
 bool bounce = true;
@@ -40,32 +38,6 @@ bool M[WIDTH][HEIGHT];
 // Comparator used to identify if two agents differ in their position
 bool cmp(Ped::Tagent *a, Ped::Tagent *b) {
   return (a->getX() < b->getX()) || ((a->getX() == b->getX()) && (a->getY() < b->getY()));
-}
-
-void Ped::Model::calculateWorkLoad(int amountAgents) {
-  int avg = amountAgents / (this->number_of_threads);
-  std::cout << "avg: " << avg << "\n";
-  std::vector<Ped::Ttree*> *leaves = new vector<Ped::Ttree*>;
-  this->tree->getLeaves(leaves);
-  int thread = 0;
-  int leafCounter = 0;
-    
-  std::vector<Ped::Ttree*>::iterator it;
-  for (it = leaves->begin(); it != leaves->end(); ++it) {
-    leafCounter += (*it)->agents->agentSet.size();
-    if (agentCounter[thread % number_of_threads] > avg) {
-      thread++;
-    }
-    Params[thread % number_of_threads]->workLoad->push_back(*it);
-    agentCounter[thread % number_of_threads] += (*it)->agents->agentSet.size();
-  }
-  std::cout << "leaf size: " << leafCounter << "\n";
-  std::cout << "agents: " << amountAgents << "\n";
-  std::cout << "agents in tree: " << tree->getAgents().size() << "\n";
-  if (leafCounter != amountAgents) {
-    std::cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAH\n\n\n\n\n\n\n";
-  }
-
 }
 
 void Ped::Model::naiveBalance() {
@@ -301,33 +273,20 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
 
     // Create contogious heatMap and initialize it to 0
     heatMapContogious = (int *) calloc(WIDTH*HEIGHT, sizeof(int));
-    //heatMapContogious = (int *) calloc(SIZE*SIZE, sizeof(int));
     scaledHeatMapContogious = (int *) calloc(SCALED_WIDTH*SCALED_HEIGHT, sizeof(int));
     blurHeatMapContigious = (int *) calloc(SCALED_WIDTH*SCALED_HEIGHT, sizeof(int));
-    //scaledHeatMapContogious = (int *) calloc(SCALED_SIZE*SCALED_SIZE, sizeof(int));
-    rowSize = (int*) malloc(sizeof(int));
-    *rowSize = WIDTH;
-    //*rowSize = SIZE;
-    
-    scaledRowSize = (int*) malloc(sizeof(int));
-    //*scaledRowSize = SCALED_SIZE;
-    *scaledRowSize = SCALED_WIDTH;
+
+    int rowSize = WIDTH;
+    int scaledRowSize = SCALED_WIDTH;
 
     // Create memorybuffer for the GPU
     size_t memoryToAllocate = sizeof(int)*length;
-        size_t heatMapSize = sizeof(int)*WIDTH*HEIGHT;
-    //size_t heatMapSize = sizeof(int)*SIZE*SIZE;
-        size_t scaledMapSize = sizeof(int)*SCALED_WIDTH*SCALED_HEIGHT;
-	//size_t scaledMapSize = sizeof(int)*SCALED_SIZE*SCALED_SIZE;
-    size_t row_size = sizeof(int);
+    size_t heatMapSize = sizeof(int)*WIDTH*HEIGHT;
+    size_t scaledMapSize = sizeof(int)*SCALED_WIDTH*SCALED_HEIGHT;
     memobjx = clCreateBuffer(context, CL_MEM_READ_ONLY,memoryToAllocate, NULL, &ret);
     memobjy = clCreateBuffer(context, CL_MEM_READ_ONLY,memoryToAllocate, NULL, &ret);
-    memobjRowSize = clCreateBuffer(context, CL_MEM_READ_ONLY,row_size, NULL, &ret);
     memobjHeatmap = clCreateBuffer(context, CL_MEM_READ_WRITE,heatMapSize, NULL, &ret);
-
     memobjScaleHeatmap = clCreateBuffer(context, CL_MEM_READ_WRITE,scaledMapSize, NULL, &ret);
-    memobjScaledRowSize = clCreateBuffer(context, CL_MEM_READ_ONLY,row_size, NULL, &ret);
-
     memobjBlurHeatmap = clCreateBuffer(context, CL_MEM_READ_WRITE,scaledMapSize, NULL, &ret);
     // Create the program
     program = clCreateProgramWithSource(context, 1, (const char **)&source_str,
@@ -343,16 +302,16 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
       cout << ret << "\n";
 
       size_t log_size;
-    clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
+      clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
  
-    // Allocate memory for the log
-    char *log = (char *) malloc(log_size);
+      // Allocate memory for the log
+      char *log = (char *) malloc(log_size);
  
-    // Get the log
-    clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
+      // Get the log
+      clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
  
-    // Print the log
-    printf("%s\n", log);
+      // Print the log
+      printf("%s\n", log);
       
       fprintf(stderr,"Failed to build program\n");
       exit(1);
@@ -364,13 +323,13 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     scalekernel = clCreateKernel(program, "scaleHeatmap", &ret);
     blurkernel = clCreateKernel(program, "gaussianBlur", &ret);
     
-    if(createHeatmapkernel==NULL || fadeHeatmapkernel==NULL ||
-       scalekernel==NULL){
+    if(createHeatmapkernel==NULL || fadeHeatmapkernel==NULL || scalekernel==NULL) {
       fprintf(stderr,"Failed to create kernel\n");
       exit(1);
     }
+
     if(clSetKernelArg(createHeatmapkernel, 0, sizeof(cl_mem), (void *)&memobjHeatmap) != CL_SUCCESS || 
-       clSetKernelArg(createHeatmapkernel, 1, sizeof(cl_mem), (void *)&memobjRowSize) != CL_SUCCESS ||
+       clSetKernelArg(createHeatmapkernel, 1, sizeof(int), &rowSize) != CL_SUCCESS ||
        clSetKernelArg(createHeatmapkernel, 2, sizeof(cl_mem), (void *)&memobjx) != CL_SUCCESS ||
        clSetKernelArg(createHeatmapkernel, 3, sizeof(cl_mem), (void *)&memobjy) != CL_SUCCESS) {
       fprintf(stderr,"Failed to set kernel parameters\n");
@@ -378,29 +337,28 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     }
 
     if(clSetKernelArg(fadeHeatmapkernel, 0, sizeof(cl_mem), (void *)&memobjHeatmap) != CL_SUCCESS || 
-       clSetKernelArg(fadeHeatmapkernel, 1, sizeof(cl_mem), (void *)&memobjRowSize) != CL_SUCCESS) {
+       clSetKernelArg(fadeHeatmapkernel, 1, sizeof(int), (void *)&rowSize) != CL_SUCCESS) {
       fprintf(stderr,"Failed to set kernel parameters\n");
       exit(1);
     }
 
     if(clSetKernelArg(scalekernel, 0, sizeof(cl_mem), (void *)&memobjScaleHeatmap) != CL_SUCCESS ||
        clSetKernelArg(scalekernel, 1, sizeof(cl_mem), (void *)&memobjHeatmap) != CL_SUCCESS || 
-       clSetKernelArg(scalekernel, 2, sizeof(cl_mem), (void *)&memobjScaledRowSize) != CL_SUCCESS) {
+       clSetKernelArg(scalekernel, 2, sizeof(int), (void *)&scaledRowSize) != CL_SUCCESS) {
       fprintf(stderr,"aFailed to set kernel parameters\n");
       exit(1);
     }
 
     if(clSetKernelArg(blurkernel, 0, sizeof(cl_mem), (void *)&memobjScaleHeatmap) != CL_SUCCESS ||
        clSetKernelArg(blurkernel, 1, sizeof(cl_mem), (void *)&memobjBlurHeatmap) != CL_SUCCESS || 
-       clSetKernelArg(blurkernel, 2, sizeof(cl_mem), (void *)&memobjScaledRowSize) != CL_SUCCESS) {
+       clSetKernelArg(blurkernel, 2, sizeof(int), (void *)&scaledRowSize) != CL_SUCCESS) {
       fprintf(stderr,"aFailed to set kernel parameters\n");
       exit(1);
-    } 
+    }
+
     /* Write starting positions to device memory */
     clEnqueueWriteBuffer(command_queue,memobjHeatmap,CL_FALSE,0,heatMapSize,heatMapContogious,0,NULL,NULL);
     clEnqueueWriteBuffer(command_queue,memobjScaleHeatmap,CL_FALSE,0,scaledMapSize,scaledHeatMapContogious,0,NULL,NULL);
-    clEnqueueWriteBuffer(command_queue,memobjRowSize,CL_FALSE,0,sizeof(int),rowSize,0,NULL,NULL);
-    clEnqueueWriteBuffer(command_queue,memobjScaledRowSize,CL_FALSE,0,sizeof(int),scaledRowSize,0,NULL,NULL);
     clEnqueueWriteBuffer(command_queue,memobjx,CL_FALSE,0,sizeof(int)*length,xDesired,0,NULL,NULL);
     clEnqueueWriteBuffer(command_queue,memobjy,CL_FALSE,0,sizeof(int)*length,yDesired,0,NULL,NULL);
     clEnqueueWriteBuffer(command_queue,memobjBlurHeatmap,CL_FALSE,0,heatMapSize,blurHeatMapContigious,0,NULL,NULL);	

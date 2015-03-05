@@ -70,24 +70,27 @@ namespace Ped{
     cl_device_id device_id;
     cl_context context;
     cl_command_queue command_queue;
+
     cl_mem memobjx;
     cl_mem memobjy;
     cl_mem memobjwx;
     cl_mem memobjwy;
+
     cl_mem memobjrArr;
     cl_mem memobjReachedArr;
 
-    cl_mem memobjRowSize;
-    cl_mem memobjScaledRowSize;
     cl_mem memobjHeatmap;
     cl_mem memobjScaleHeatmap;
     cl_mem memobjBlurHeatmap;
+
     cl_program program;
+
     cl_kernel createHeatmapkernel;
     cl_kernel fadeHeatmapkernel;
     cl_kernel scalekernel;
     cl_kernel kernel;
     cl_kernel blurkernel;
+
     cl_platform_id platform_id;
     cl_uint ret_num_devices; 
     cl_uint ret_num_platforms;
@@ -106,7 +109,6 @@ namespace Ped{
 
     // Adds an agent to the tree structure
     void placeAgent( Ped::Tagent *a);
-    void calculateWorkLoad(int amountAgents);
     void naiveBalance();
 
     int *agentCounter;
