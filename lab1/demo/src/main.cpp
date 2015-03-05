@@ -19,7 +19,7 @@
 
 #include <iostream>
 #include <fstream>
-
+#include <time.h>
 //#define SIMULATION_STEPS 1000000
 #define SIMULATION_STEPS 5
 
@@ -100,7 +100,7 @@ int main(int argc, char*argv[]) {
   // TODO: default 100
   const int delay_ms = 16;
   Timer *timer;
-#define TICK_LIMIT 10000
+#define TICK_LIMIT 100
 #define AS_FAST_AS_POSSIBLE 0
   if(timing_mode)
     {
@@ -135,10 +135,16 @@ int main(int argc, char*argv[]) {
 
   cout << "Done" << endl;
 
-  if(choice == Ped::OPENCL) {
-    printf("\nExecution time of opencl in seconds = %0.3f seconds\n", (model.total_opencl_time / 100000000.0) );
+  if(enableHeatmap) {
+    printf("\nExecution time of blur opencl in seconds = %0.3f seconds\n", (model.total_time_blur / 1000000000.0) );
+    printf("\nExecution time of fade opencl in seconds = %0.3f seconds\n", (model.total_time_fade / 1000000000.0) );
+    printf("\nExecution time of createHeatmap opencl in seconds = %0.3f seconds\n", (model.total_time_createheatmap / 1000000000.0) );
+    printf("\nExecution time of scale opencl in seconds = %0.3f seconds\n", (model.total_time_scale / 1000000000.0) );    
+printf("\nExecution time of memory writes to opencl in seconds = %0.3f seconds\n", (model.total_write_time) );
+
   }
 
+  
   ofstream file;
   file.open("../data.txt", std::ios::app);
 

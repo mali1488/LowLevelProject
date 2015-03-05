@@ -5,7 +5,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <math.h>
-
+#include <time.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -80,7 +80,11 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
   this->threads = NULL;
   this->tickcounter = 0;
   heatmapFlag = enableHeatMap;
- 
+  total_write_time = 0;
+  total_time_fade = 0.0;
+  total_time_scale = 0.0;
+  total_time_createheatmap = 0.0;
+  total_time_blur = 0.0;
   if(choice != COLLISIONSEQ && choice != COLLISIONPTHREAD) {
     agents = agentsInScenario;
     std::vector<Tagent*> agents = Ped::Model::getAgents();
@@ -265,7 +269,7 @@ void Ped::Model::setup(vector<Ped::Tagent*> agentsInScenario, IMPLEMENTATION cho
     }
         
     // create commando queue
-    command_queue = clCreateCommandQueue(context,device_id,0,&ret);
+    command_queue = clCreateCommandQueue(context,device_id,CL_QUEUE_PROFILING_ENABLE,&ret);
     if (command_queue == NULL) {
       fprintf(stderr,"Failed to create command_queue\n");
       exit(1);
@@ -563,9 +567,15 @@ void Ped::Model::tick()
 	  yDesired[i] = static_cast<int>(agents[i]->getDesiredY());
 	  //printf("p[%d] = %d, y[%d] = %d\n",i,xDesired[i],i,yDesired[i]);
 	}
+	
+	clock_t time_start_write, time_end_write;
+	time_start_write = clock();
+	clEnqueueWriteBuffer(command_queue,memobjx,CL_FALSE,0,sizeof(int)*length,xDesired,0,NULL,NULL);
+	clEnqueueWriteBuffer(command_queue,memobjy,CL_FALSE,0,sizeof(int)*length,yDesired,0,NULL,NULL);
 
-	clEnqueueWriteBuffer(command_queue,memobjx,CL_TRUE,0,sizeof(int)*length,xDesired,0,NULL,NULL);
-	clEnqueueWriteBuffer(command_queue,memobjy,CL_TRUE,0,sizeof(int)*length,yDesired,0,NULL,NULL);
+        time_end_write = clock();
+	//std::cout << time_end_write << ", "<< time_start_write << " "<< total_write_time<<"\n";
+	total_write_time += (time_end_write - time_start_write);
       }
 
       for(int i = 0; i < number_of_threads; i++) {
@@ -597,32 +607,48 @@ void Ped::Model::tick()
 	//const size_t global_fade_size[] = {SIZE, SIZE};
 	const size_t global_scale_size[] = {SCALED_HEIGHT, SCALED_WIDTH};
 	const size_t local_fade_size[] = {1, 1};
-	const size_t local_blur_size[] = {5, 5};
+	const size_t local_blur_size[] = {8, 8};
 	size_t global_item_size = length;
 	size_t local_item_size = 1;	
-
-	ret = clEnqueueNDRangeKernel(command_queue, fadeHeatmapkernel, 2,NULL, global_fade_size,local_fade_size, 0, NULL, NULL);
-	clFinish(command_queue);
+	blurEvent = NULL;
+	fadeEvent = NULL;
+	scaleEvent = NULL;
+	createheatmapEvent = NULL;
 	
-	ret = clEnqueueNDRangeKernel(command_queue, createHeatmapkernel, 1,NULL, &global_item_size,&local_item_size, 0, NULL, NULL);
+	ret = clEnqueueNDRangeKernel(command_queue, fadeHeatmapkernel, 2,NULL, global_fade_size,local_fade_size, 0, NULL, &fadeEvent);
 	clFinish(command_queue);
-
-	ret = clEnqueueNDRangeKernel(command_queue, scalekernel, 2,NULL, global_scale_size,NULL, 0, NULL, NULL);
-	if(ret != CL_SUCCESS) {
-	  cout << "ret = " << ret << " :";
-	  fprintf(stderr,"Failed to load kernels in tick\n");
-	  exit(1);
-	}
-
-	ret = clEnqueueNDRangeKernel(command_queue, blurkernel, 2,NULL, global_scale_size,local_blur_size, 0, NULL, NULL);
-	if(ret != CL_SUCCESS) {
-	  cout << "ret = " << ret << " :";
-	  fprintf(stderr,"Failed to load kernels in tick\n");
-	  exit(1);
-	}
+	ret = clWaitForEvents(1 , &fadeEvent);
+	cl_ulong time_start_fade, time_end_fade;
+	ret = clGetEventProfilingInfo(fadeEvent, CL_PROFILING_COMMAND_START, sizeof(time_start_fade), &time_start_fade, NULL);
+	ret = clGetEventProfilingInfo(fadeEvent, CL_PROFILING_COMMAND_END, sizeof(time_end_fade), &time_end_fade, NULL);
+	total_time_fade += (time_end_fade - time_start_fade);
+	
+	ret = clEnqueueNDRangeKernel(command_queue, createHeatmapkernel, 1,NULL, &global_item_size,&local_item_size, 0, NULL, &createheatmapEvent);
 	clFinish(command_queue);
+	ret = clWaitForEvents(1 , &createheatmapEvent);
+	cl_ulong time_start_heatmap, time_end_heatmap;
+	ret = clGetEventProfilingInfo(createheatmapEvent, CL_PROFILING_COMMAND_START, sizeof(time_start_heatmap), &time_start_heatmap, NULL);
+	ret = clGetEventProfilingInfo(createheatmapEvent, CL_PROFILING_COMMAND_END, sizeof(time_end_heatmap), &time_end_heatmap, NULL);
+	total_time_createheatmap += (time_end_heatmap - time_start_heatmap);
+	
+	ret = clEnqueueNDRangeKernel(command_queue, scalekernel, 2,NULL, global_scale_size,NULL, 0, NULL, &scaleEvent);
+	clFinish(command_queue);
+	ret = clWaitForEvents(1 , &scaleEvent);
+	cl_ulong time_start_scale, time_end_scale;
+	ret = clGetEventProfilingInfo(scaleEvent, CL_PROFILING_COMMAND_START, sizeof(time_start_scale), &time_start_scale, NULL);
+	ret = clGetEventProfilingInfo(scaleEvent, CL_PROFILING_COMMAND_END, sizeof(time_end_scale), &time_end_scale, NULL);
+	total_time_scale += (time_end_scale - time_start_scale);
+
+	ret = clEnqueueNDRangeKernel(command_queue, blurkernel, 2,NULL, global_scale_size,local_blur_size, 0, NULL, &blurEvent);
+	clFinish(command_queue);
+	ret = clWaitForEvents(1 , &blurEvent);
+	cl_ulong time_start_blur, time_end_blur;
+	ret = clGetEventProfilingInfo(blurEvent, CL_PROFILING_COMMAND_START, sizeof(time_start_blur), &time_start_blur, NULL);
+	ret = clGetEventProfilingInfo(blurEvent, CL_PROFILING_COMMAND_END, sizeof(time_end_blur), &time_end_blur, NULL);
+	total_time_blur += (time_end_blur - time_start_blur);
+	
 	ret = clEnqueueReadBuffer(command_queue,memobjBlurHeatmap,CL_TRUE,0,sizeof(int)*SCALED_WIDTH*SCALED_HEIGHT,blurHeatMapContigious,0,NULL,NULL);
-
+	
 	
 	for(int y = 0; y < SCALED_HEIGHT; y++){
 	  for(int x = 0; x < SCALED_WIDTH; x++) {
