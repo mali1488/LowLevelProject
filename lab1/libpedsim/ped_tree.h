@@ -61,11 +61,8 @@ namespace Ped {
 	void toString();
 	
 	bool moveCheck( Ped::Tagent *a, int x, int y);
-	bool dangerControl( Ped::Tagent *a, int dist);
 
         typedef struct lockedAgents {
-	  pthread_mutex_t lock; // = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
-	  bool agentCAS;
 	  set< Ped::Tagent*> agentSet;
         } *LockedAgents;
 

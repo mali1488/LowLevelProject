@@ -28,12 +28,8 @@ Ped::Ttree::Ttree(Ped::Ttree *root,std::map< Ped::Tagent*, Ped::Ttree*> *treehas
   this->root = root != NULL ? root: this;
   this->treehash = treehash;
   // this should be moved somewhere else
-  pthread_mutexattr_init(&Attr);
-  pthread_mutexattr_settype(&Attr, PTHREAD_MUTEX_RECURSIVE);
   isleaf = true;
   this->agents = new struct lockedAgents;
-  this->agents->agentCAS = false;
-  pthread_mutex_init(&(this->agents->lock), &Attr);    
 
   x = px;
   y = py;
@@ -169,7 +165,7 @@ bool Ped::Ttree::dangerZone(Ped::Tagent *a, std::vector<Ped::Ttree*> *trees) {
     for (std::vector<Ped::Ttree*>::iterator i = trees->begin(); i != trees->end(); ++i) {
         Ped::Ttree *t = (*i);
 	/* Allow agents to stand on right-most and bottom-most border */
-        if (((t->x + t->w) >= (a->getX()+r)) && ((t->x) < a->getX() - r) && ((t->y + t->h) >= (a->getY() + r)) && ((t->y) < (a->getY() - r))) { // Allow agents to be closer to the right and bottom most borders compared to the left and top most.
+        if (((t->x + t->w) > (a->getX()+r)) && ((t->x) < a->getX() - r) && ((t->y + t->h) > (a->getY() + r)) && ((t->y) < (a->getY() - r))) { // Allow agents to be closer to the right and bottom most borders compared to the left and top most.
             return false;
         }
     }
@@ -193,15 +189,6 @@ std::vector<Ped::Ttree*> Ped::Ttree::getNeighbor() {
     return ret;
 }
 
-
-
-bool Ped::Ttree::dangerControl( Ped::Tagent *a, int dist) {
-  if ((a->getX() - dist < x) || (a->getX() + dist > (x+w)) || (a->getY() - dist < y) || (a->getY() + dist > (y+h))) {
-    return true;
-  } else {
-    return false;
-  }
-}
 
 bool Ped::Ttree::removeAgent( Ped::Tagent *a) {
   if(isleaf) {
@@ -314,15 +301,6 @@ bool Ped::Ttree::intersects(double px, double py, double pr)  {
   else
     return false;
     } 
-
-// Experimental version:
-/*
-bool Ped::Ttree::intersects(double px, double py, double pr)  {
-  if (((px-pr) >= x) && ((px+pr) <= (x+w)) && ((py-pr) >= y) && ((py+pr) <= (y+h)))
-    return true; // x+-r/y+-r is inside
-  else
-    return false;
-    } */
 
 void Ped::Ttree::toString(){
   std::cout << "x :"<< x << ",y :" << y << ",h :"<< h << ", w:" << w << ", number agents: " << getAgents().size() << ", depth:" << depth << "\n";

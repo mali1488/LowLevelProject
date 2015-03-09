@@ -95,23 +95,11 @@ namespace Ped{
     cl_uint ret_num_devices; 
     cl_uint ret_num_platforms;
     cl_int ret;
-
-    cl_event blurEvent;
-    cl_event fadeEvent;
-    cl_event scaleEvent;
-    cl_event createheatmapEvent;
+ 
     FILE *fp;
     char *source_str;
     size_t source_size;
 
-    double total_time_blur;
-    double total_time_scale;
-    double total_time_createheatmap;
-    double total_time_fade;
-    cl_ulong time_start;
-    cl_ulong time_end;
-
-    time_t total_write_time;
     ////////////
     /// THIS IS NEW
     ///////////////////////////////////////////////
@@ -142,10 +130,8 @@ namespace Ped{
     ////////////
     /// THIS IS NEW
     ///////////////////////////////////////////////
-    //#define WIDTH 800
+    #define WIDTH 800
     #define HEIGHT 600
-    #define WIDTH 832
-    //#define HEIGHT 624
 
     #define SIZE 1024
     #define CELLSIZE 5
