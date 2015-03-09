@@ -584,8 +584,8 @@ void Ped::Model::tick()
       if(heatmapFlag) {
 	const size_t global_fade_size[] = {HEIGHT, WIDTH};
 	const size_t global_scale_size[] = {SCALED_HEIGHT, SCALED_WIDTH};
-	const size_t local_fade_size[] = {1, 1};
-	/* {8, 8} for matching wavefront */
+	/* {8, 8} for matching AMD wavefront */
+	const size_t local_fade_size[] = {8, 8};
 	const size_t local_blur_size[] = {8, 8};
 	size_t global_item_size = length;
 	size_t local_item_size = 1;	
