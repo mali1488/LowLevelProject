@@ -742,8 +742,7 @@ void Ped::Model::tick()
 
       // Execute OpenCL kernel as data parallel 
       size_t global_item_size = length;
-      size_t local_item_size = 100;
-      ret = clEnqueueNDRangeKernel(command_queue, kernel, 1,NULL, &global_item_size, &local_item_size, 0, NULL, NULL);
+      ret = clEnqueueNDRangeKernel(command_queue, kernel, 1,NULL, &global_item_size, NULL, 0, NULL, NULL);
       if(ret != CL_SUCCESS) {
 	cout << "ret = " << ret << " :";
 	fprintf(stderr,"Failed to load kernels in tick\n");
